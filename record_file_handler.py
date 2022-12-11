@@ -1,8 +1,8 @@
 import struct
+from os import path
+from sys import maxsize
 
 from contants import Constants
-from sys import maxsize
-from os import path
 from record import Record
 
 
@@ -60,10 +60,15 @@ class RecordFileHandler:
                 file.write(float_to_binary(entry.sum_probability))
                 bytes_written += Constants.FLOAT_SIZE * 3
 
+    def get_record_by_index(self, index, page_number):
+        if not self._loaded_page.page_number == page_number:
+            self.load_page(page_number)
+        return self._loaded_page.get_record(index)
+
 
 class RecordFilePage:
     def __init__(self, page_number):
-        self._records = list()
+        self._records = []
         self._page_number = page_number
 
     def add_last_record(self, record):
@@ -80,6 +85,9 @@ class RecordFilePage:
 
     def get_number_of_records(self):
         return len(self._records)
+
+    def get_record(self, index):
+        return next((record for record in self._records if record.index == index), None)
 
     @property
     def page_number(self):

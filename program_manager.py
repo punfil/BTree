@@ -88,8 +88,9 @@ class ProgramManager:
         self._btree.delete_record(index)
 
     def update_record_command(self):
-        input_string = input("Please enter the record you would like to update in a format:\n KEY P(A) P(B) P(A∪B) "
-                             "I.E. INT FLOAT FLOAT FLOAT\n")
+        old_index = input("Please enter the old index of the record.\n")
+        input_string = input("Please enter the new data of the record you would like to update in a format:\n KEY P("
+                             "A) P(B) P(A∪B) I.E. INT FLOAT FLOAT FLOAT\n")
         numbers = input_string.split(" ")
         assert (len(numbers) == 4)
         try:
@@ -103,4 +104,4 @@ class ProgramManager:
         except AssertionError:
             print("Wrong value entered!")
             return
-        self._btree.update_record(index, a_probability, b_probability, sum_probability)
+        self._btree.update_record(old_index, index, a_probability, b_probability, sum_probability)
