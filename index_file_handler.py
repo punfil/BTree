@@ -8,15 +8,16 @@ class IndexFileHandler:
     def __init__(self, page_size=4):  # Page size in number of records (which metadata are here)
         self._filename = Constants.INDEXES_FILENAME
         self._loaded_page: IndexFilePage = IndexFilePage(0)
+        self._loaded_pages_stack = list() # Useful when tree's h > 1
         self._number_of_pages = 1
-        self._page_size = page_size * (Constants.INTEGER_SIZE + Constants.FLOAT_SIZE)
+        self._page_size = page_size * (3 * Constants.INTEGER_SIZE) + Constants.INTEGER_SIZE
 
     def load_page(self, page_number):
         try:
             assert(path.exists(self._filename))
+            assert (0 <= page_number < self._number_of_pages)
         except AssertionError:
             return
-        assert (0 <= page_number < self._number_of_pages)
         self._loaded_page = IndexFilePage(page_number)
         with open(self._filename, "rb") as file:
             file.seek(self._page_size * page_number)
@@ -27,9 +28,13 @@ class IndexFileHandler:
                 match numbers_read % 3:
                     case 0:  # It's the address
                         file_position = int.from_bytes(file.read(Constants.INTEGER_SIZE), Constants.LITERAL)
+                        if file_position == maxsize:
+                            return
                         self._loaded_page.add_last_pointer_entry(IndexFilePageAddressEntry(file_position))
                     case 1:  # It's the index
                         index = int.from_bytes(file.read(Constants.INTEGER_SIZE), Constants.LITERAL)
+                        if index == maxsize:
+                            return
                     case 2:  # It's the page number
                         page_number_from_file = int.from_bytes(file.read(Constants.INTEGER_SIZE), Constants.LITERAL)
                         self._loaded_page.add_last_metadata_entry(IndexFilePageRecordEntry(index, page_number_from_file))
@@ -52,6 +57,7 @@ class IndexFileHandler:
                 bytes_written += Constants.INTEGER_SIZE
 
     def get_records_page_number(self, index):
+        self._loaded_pages_stack.clear()
         page_number = self._loaded_page.get_records_page_number(index)
         if page_number is None:
             # Check if there are more pages to check
@@ -67,6 +73,7 @@ class IndexFileHandler:
                 except AssertionError:
                     return None  # Such record doesn't exist
                 self.save_page()
+                self._loaded_pages_stack.append(self._loaded_page)
                 self.load_page(page_to_load_number)
                 return self.get_records_page_number(index)
         return page_number

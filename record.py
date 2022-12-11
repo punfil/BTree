@@ -23,3 +23,15 @@ class Record:
     @property
     def index(self):
         return self._index
+
+    @property
+    def a_probability(self):
+        return self._a_probability
+
+    @property
+    def b_probability(self):
+        return self._b_probability
+
+    @property
+    def sum_probability(self):
+        return self._sum_probability

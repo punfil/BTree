@@ -35,13 +35,13 @@ class ProgramManager:
                 case ProgramCommand.READ_RECORD:
                     pass
                 case ProgramCommand.PRINT_TREE:
-                    pass
+                    self.print_tree_command()
                 case ProgramCommand.REORGANISE:
-                    pass
+                    self.reorganise_command()
                 case ProgramCommand.DELETE:
                     self.delete_record_command()
                 case ProgramCommand.UPDATE:
-                    pass
+                    self.update_record_command()
                 case ProgramCommand.QUIT:
                     exit_program = True
 
@@ -58,7 +58,7 @@ class ProgramManager:
             assert (0 <= a_probability <= 1.0)
             assert (0 <= b_probability <= 1.0)
             assert (0 <= sum_probability <= 1.0)
-        except ValueError:
+        except AssertionError:
             print("Wrong value entered!")
             return
         self._btree.add_record(index, a_probability, b_probability, sum_probability)
@@ -86,3 +86,21 @@ class ProgramManager:
             print("Invalid index of record!\n")
             return
         self._btree.delete_record(index)
+
+    def update_record_command(self):
+        input_string = input("Please enter the record you would like to update in a format:\n KEY P(A) P(B) P(A∪B) "
+                             "I.E. INT FLOAT FLOAT FLOAT\n")
+        numbers = input_string.split(" ")
+        assert (len(numbers) == 4)
+        try:
+            index = int(numbers[0])
+            a_probability = float(numbers[1])
+            b_probability = float(numbers[2])
+            sum_probability = float(numbers[3])
+            assert (0 <= a_probability <= 1.0)
+            assert (0 <= b_probability <= 1.0)
+            assert (0 <= sum_probability <= 1.0)
+        except AssertionError:
+            print("Wrong value entered!")
+            return
+        self._btree.update_record(index, a_probability, b_probability, sum_probability)
