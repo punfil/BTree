@@ -1,5 +1,8 @@
 from contants import Constants
 from sys import maxsize
+from os import path
+from abc import ABC
+
 
 class IndexFileHandler:
     def __init__(self, page_size=4):  # Page size in number of records (which metadata are here)
@@ -9,33 +12,41 @@ class IndexFileHandler:
         self._page_size = page_size * (Constants.INTEGER_SIZE + Constants.FLOAT_SIZE)
 
     def load_page(self, page_number):
-        assert (page_number < self._number_of_pages)
+        try:
+            assert(path.exists(self._filename))
+        except AssertionError:
+            return
+        assert (0 <= page_number < self._number_of_pages)
         self._loaded_page = IndexFilePage(page_number)
         with open(self._filename, "rb") as file:
             file.seek(self._page_size * page_number)
             bytes_read = 0
+            numbers_read = 0
+            index, page_number_from_file = 0, 0
             while bytes_read < self._page_size:
-                # Read index
-                index = int.from_bytes(file.read(), Constants.LITERAL)
+                match numbers_read % 3:
+                    case 0:  # It's the address
+                        file_position = int.from_bytes(file.read(Constants.INTEGER_SIZE), Constants.LITERAL)
+                        self._loaded_page.add_last_pointer_entry(IndexFilePageAddressEntry(file_position))
+                    case 1:  # It's the index
+                        index = int.from_bytes(file.read(Constants.INTEGER_SIZE), Constants.LITERAL)
+                    case 2:  # It's the page number
+                        page_number_from_file = int.from_bytes(file.read(Constants.INTEGER_SIZE), Constants.LITERAL)
+                        self._loaded_page.add_last_metadata_entry(IndexFilePageRecordEntry(index, page_number_from_file))
                 bytes_read += Constants.INTEGER_SIZE
-                if index == maxsize:
-                    break # We got to the end
-                # Read page number where the record is
-                page_number = int.from_bytes(file.read(), Constants.LITERAL)
-                bytes_read += Constants.INTEGER_SIZE
-                self._loaded_page.add_last_entry(IndexFilePageEntry(index, page_number))
+                numbers_read += 1
 
     def save_page(self):
         with open(self._filename, "ab+") as file:
             file.seek(self._page_size * self._loaded_page.page_number)
             bytes_written = 0
-            entry = self._loaded_page.remove_first_entry()
+            entry = self._loaded_page.remove_first_metadata_entry()
             while bytes_written < self._page_size and entry is not None:
                 file.write(entry.index.to_bytes(Constants.INTEGER_SIZE, Constants.LITERAL))
                 bytes_written += Constants.INTEGER_SIZE
                 file.write(entry.page_number.to_bytes(Constants.INTEGER_SIZE, Constants.LITERAL))
                 bytes_written += Constants.INTEGER_SIZE
-                entry = self._loaded_page.remove_first_entry()
+                entry = self._loaded_page.remove_first_metadata_entry()
             while bytes_written < self._page_size:
                 file.write(maxsize.to_bytes(Constants.INTEGER_SIZE, Constants.LITERAL))
                 bytes_written += Constants.INTEGER_SIZE
@@ -63,49 +74,89 @@ class IndexFileHandler:
 
 class IndexFilePage:
     def __init__(self, page_number):
-        self._entries = list()
+        self._metadata_entries = list()
+        self._pointer_entries = list()
         self._page_number = page_number
 
-    def add_last_entry(self, entry):
-        self._entries.append(entry)
+    def add_last_metadata_entry(self, entry):
+        self._metadata_entries.append(entry)
 
-    def add_entry_between(self, entry):
+    def add_last_pointer_entry(self, entry):
+        self._pointer_entries.append(entry)
+
+    def add_metadata_entry_between(self, entry):
         # If it doesn't find anything return len(list) -1
         # If first element is larger return 0
-        list_index = max(0, next((index for index, list_entry in enumerate(self._entries) if entry < list_entry),
-                                 len(self._entries)) - 1)
-        self._entries.insert(list_index, entry)
+        list_index = max(0, next((index for index, list_entry in enumerate(self._metadata_entries) if entry < list_entry),
+                                 len(self._metadata_entries)) - 1)
+        self._metadata_entries.insert(list_index, entry)
 
-    def remove_first_entry(self):
-        assert (len(self._entries))
-        return self._entries.pop(0)
+    def add_pointer_entry_between(self, entry, ptr_value):
+        # If it doesn't find anything return len(list) -1
+        # If first element is larger return 0
+        list_index = max(0, next((index for index, list_entry in enumerate(self._metadata_entries) if entry < list_entry),
+                                 len(self._metadata_entries)) - 2)
+        self._pointer_entries.insert(list_index, ptr_value)
 
-    def remove_entry_between(self, index):
-        entry = next((list_entry for list_entry in self._entries if list_entry.index == index), None)
-        assert (entry is not None)
-        self._entries.remove(entry)
+    def remove_first_metadata_entry(self):
+        assert (len(self._metadata_entries))
+        return self._metadata_entries.pop(0)
+
+    def remove_first_pointer_entry(self):
+        assert(len(self._pointer_entries))
+        return self._pointer_entries.pop(0)
+
+    def remove_metadata_entry_between(self, index):
+        entry = next((list_entry for list_entry in self._metadata_entries if list_entry.index == index), None)
+        try:
+            assert (entry is not None)
+        except AssertionError:
+            return
+        self._metadata_entries.remove(entry)
+
+    def remove_pointer_entry_between(self, index):
+        list_index = max(0,
+                         next((index for index, list_entry in enumerate(self._metadata_entries) if index < list_entry.index),
+                              len(self._metadata_entries)) - 2)
+        self._pointer_entries.pop(list_index)
 
     def get_records_page_number(self, index):
-        return next((entry for entry in self._entries if entry.index == index), None)
+        return next((entry.page_number for entry in self._metadata_entries if entry.index == index), None)
 
     def get_first_record_index(self):
-        return self._entries[0].index
+        return self._metadata_entries[0].index
 
     def get_last_record_index(self):
-        return self._entries[-1].index
+        return self._metadata_entries[-1].index
 
     def get_number_of_entries(self):
-        return len(self._entries)
+        return len(self._metadata_entries)
 
     @property
     def page_number(self):
         return self._page_number
 
 
-class IndexFilePageEntry:
+class IndexFilePageEntry(ABC):
+    def __init__(self):
+        pass
+
+
+class IndexFilePageAddressEntry(IndexFilePageEntry):
+    def __init__(self, file_position):
+        self._file_position = file_position
+        super().__init__()
+
+    @property
+    def file_position(self):
+        return self._file_position
+
+
+class IndexFilePageRecordEntry(IndexFilePageEntry):
     def __init__(self, index, page_number):
         self._index = index
         self._page_number = page_number
+        super().__init__()
 
     @property
     def index(self):
