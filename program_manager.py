@@ -1,3 +1,5 @@
+import random
+
 from btree import BTree
 
 
@@ -16,18 +18,29 @@ class ProgramManager:
         self._btree = None
         pass
 
+    @staticmethod
+    def display_menu():
+        print(f"{ProgramCommand.ADD_RECORD} - ADD RECORD")
+        print(f"{ProgramCommand.READ_RECORD} - READ RECORD")
+        print(f"{ProgramCommand.PRINT_TREE} - PRINT TREE")
+        print(f"{ProgramCommand.REORGANISE} - REORGANISE")
+        print(f"{ProgramCommand.DELETE} - DELETE RECORD")
+        print(f"{ProgramCommand.UPDATE} - UPDATE RECORD")
+        print(f"{ProgramCommand.QUIT} - QUIT THE PROGRAM")
+
     def run_the_program(self):
         exit_program = False
-        print("Welcome to the program that implements the BTree data structure with index file!\n Please enter tree "
-              "order:\n")
+        print("Welcome to the program that implements the BTree data structure with index file!\nPlease enter tree "
+              "order:")
         btree_degree_string = input()
         try:
             btree_degree_int = int(btree_degree_string)
         except ValueError:
-            print("Please enter a valid BTree degree next time! Bye!\n")
+            print("Please enter a valid BTree degree next time! Bye!")
             return
         self._btree = BTree(btree_degree_int)
         while exit_program is False:
+            self.display_menu()
             command = input()
             match command:
                 case ProgramCommand.ADD_RECORD:
@@ -49,12 +62,12 @@ class ProgramManager:
         input_string = input("Please enter the record you would like to add in a format:\n KEY P(A) P(B) P(A∪B) I.E. "
                              "INT FLOAT FLOAT FLOAT\n")
         numbers = input_string.split(" ")
-        assert (len(numbers) == 4)
+        assert(len(numbers) == 1)#assert (len(numbers) == 4)
         try:
             index = int(numbers[0])
-            a_probability = float(numbers[1])
-            b_probability = float(numbers[2])
-            sum_probability = float(numbers[3])
+            a_probability = random.random()  # float(numbers[1])
+            b_probability = random.random()  # float(numbers[2])
+            sum_probability = random.random()  # float(numbers[3])
             assert (0 <= a_probability <= 1.0)
             assert (0 <= b_probability <= 1.0)
             assert (0 <= sum_probability <= 1.0)
@@ -89,15 +102,15 @@ class ProgramManager:
 
     def update_record_command(self):
         old_index = input("Please enter the old index of the record.\n")
-        input_string = input("Please enter the new data of the record you would like to update in a format:\n KEY P("
+        input_string = input("Please enter the new data of the record you would like to update in a format:\nKEY P("
                              "A) P(B) P(A∪B) I.E. INT FLOAT FLOAT FLOAT\n")
         numbers = input_string.split(" ")
         assert (len(numbers) == 4)
         try:
             index = int(numbers[0])
-            a_probability = float(numbers[1])
-            b_probability = float(numbers[2])
-            sum_probability = float(numbers[3])
+            a_probability = random.random()  # float(numbers[1])
+            b_probability = random.random()  # float(numbers[2])
+            sum_probability = random.random()  # float(numbers[3])
             assert (0 <= a_probability <= 1.0)
             assert (0 <= b_probability <= 1.0)
             assert (0 <= sum_probability <= 1.0)

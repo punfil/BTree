@@ -1,4 +1,5 @@
 import struct
+import sys
 from os import path
 from sys import maxsize
 
@@ -23,8 +24,13 @@ class RecordFileHandler:
         self._number_of_pages = 1
         # Index + P(A) + P(B) + P(AUB)
         self._page_size = page_size * (Constants.INTEGER_SIZE + 3 * Constants.FLOAT_SIZE)
+        self._max_number_of_records = page_size
 
-    def load_page(self, page_number):
+    def create_new_page(self):
+        self._loaded_page.create_new_page(self._number_of_pages)
+        self._number_of_pages += 1
+
+    def load_existing_page(self, page_number):
         try:
             assert (path.exists(self._filename))
             assert (0 <= page_number < self._number_of_pages)
@@ -59,11 +65,36 @@ class RecordFileHandler:
                 file.write(float_to_binary(entry.b_probability))
                 file.write(float_to_binary(entry.sum_probability))
                 bytes_written += Constants.FLOAT_SIZE * 3
+            while bytes_written < self._page_size:
+                file.write(sys.maxsize.to_bytes(Constants.FLOAT_SIZE, Constants.LITERAL))
+                bytes_written += Constants.FLOAT_SIZE
 
     def get_record_by_index(self, index, page_number):
         if not self._loaded_page.page_number == page_number:
-            self.load_page(page_number)
+            self.load_existing_page(page_number)
         return self._loaded_page.get_record(index)
+
+    def add_record(self, index, a_probability, b_probability, sum_probability):
+        # Check if we can write it to the current page
+        if self._loaded_page.get_number_of_records() < self._max_number_of_records:
+            # Yes, there's empty space
+            record = Record(index, a_probability, b_probability, sum_probability)
+            self._loaded_page.add_last_record(record)
+            return self._loaded_page.page_number
+        else:
+            # No, there's no space on this page. Check the last one.
+            if self._loaded_page.page_number != self._number_of_pages:
+                # The currently loaded page is not the last one
+                self.save_page()
+                self.load_existing_page(self._number_of_pages - 1)
+                self.add_record(index, a_probability, b_probability, sum_probability)
+            else:
+                # Currently loaded page is the last one. There's no space in existing pages. Add a new one!
+                self.save_page()
+                self.create_new_page()
+                record = Record(index, a_probability, b_probability, sum_probability)
+                self._loaded_page.add_last_record(record)
+                return self._loaded_page.page_number
 
 
 class RecordFilePage:
@@ -88,6 +119,10 @@ class RecordFilePage:
 
     def get_record(self, index):
         return next((record for record in self._records if record.index == index), None)
+
+    def create_new_page(self, new_page_number):
+        self._page_number = new_page_number
+        self._records.clear()
 
     @property
     def page_number(self):

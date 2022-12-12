@@ -1,4 +1,3 @@
-from abc import ABC
 from os import path
 from sys import maxsize
 
@@ -56,6 +55,9 @@ class IndexFileHandler:
     def empty_page_stack(self):
         self._loaded_page_stack.clear()
 
+    def pop_last_page_stack(self):
+        self._loaded_page = self._loaded_page_stack.pop(0)
+
     def save_page(self):
         with open(self._filename, "ab+") as file:
             file.seek(self._page_size * self._loaded_page.page_number)
@@ -78,6 +80,13 @@ class IndexFileHandler:
     def get_number_of_records(self):
         return self._loaded_page.get_number_of_metadata_entries()
 
+    def get_number_of_sons(self):
+        return self._loaded_page.get_number_of_pointer_entries()
+
+    def add_record(self, index, page_number):
+        # When calling that make sure that there's place on this page!
+        self._loaded_page.add_metadata_entry_between(IndexFilePageRecordEntry(index, page_number))
+
     @property
     def loaded_page(self):
         return self._loaded_page
@@ -85,8 +94,8 @@ class IndexFileHandler:
 
 class IndexFilePage:
     def __init__(self, page_number):
-        self._metadata_entries = [IndexFilePageRecordEntry]
-        self._pointer_entries = [IndexFilePageAddressEntry]
+        self._metadata_entries = []
+        self._pointer_entries = []
         self._page_number = page_number
 
     def add_last_metadata_entry(self, entry):
@@ -146,6 +155,9 @@ class IndexFilePage:
     def get_number_of_metadata_entries(self):
         return len(self._metadata_entries)
 
+    def get_number_of_pointer_entries(self):
+        return len(self._pointer_entries)
+
     def get_particular_metadata_entry(self, index):
         try:
             assert (index < len(self._metadata_entries))
@@ -164,13 +176,16 @@ class IndexFilePage:
     def page_number(self):
         return self._page_number
 
+    @property
+    def metadata_entries(self):
+        return self._metadata_entries
 
-class IndexFilePageEntry(ABC):
-    def __init__(self):
-        pass
+    @property
+    def pointer_entries(self):
+        return self._pointer_entries
 
 
-class IndexFilePageAddressEntry(IndexFilePageEntry):
+class IndexFilePageAddressEntry:
     def __init__(self, file_position):
         self._file_position = file_position
         super().__init__()
@@ -180,7 +195,7 @@ class IndexFilePageAddressEntry(IndexFilePageEntry):
         return self._file_position
 
 
-class IndexFilePageRecordEntry(IndexFilePageEntry):
+class IndexFilePageRecordEntry:
     def __init__(self, index, page_number):
         self._index = index
         self._page_number = page_number
@@ -190,6 +205,13 @@ class IndexFilePageRecordEntry(IndexFilePageEntry):
     def index(self) -> int:
         return self._index
 
+    @index.setter
+    def index(self, new_index):
+        self._index = new_index
+
     @property
     def page_number(self) -> int:
         return self._page_number
+
+    def __lt__(self, other):
+        return self._index < other.index
