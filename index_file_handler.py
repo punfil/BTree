@@ -9,6 +9,7 @@ class IndexFileHandler:
     def __init__(self, page_size=4):  # Page size in number of records (which metadata are here)
         self._filename = Constants.INDEXES_FILENAME
         self._loaded_page: IndexFilePage = IndexFilePage(0)
+        self._loaded_page_stack = []
         self._number_of_pages = 1
         self._page_size = page_size * (3 * Constants.INTEGER_SIZE) + Constants.INTEGER_SIZE
 
@@ -41,6 +42,19 @@ class IndexFileHandler:
                             IndexFilePageRecordEntry(index, page_number_from_file))
                 bytes_read += Constants.INTEGER_SIZE
                 numbers_read += 1
+
+    def put_current_page_on_page_stack(self):
+        self._loaded_page_stack.append(self._loaded_page)
+
+    def load_page_from_page_stack(self, index):
+        try:
+            assert (0 <= index < len(self._loaded_page_stack))
+        except AssertionError:
+            return
+        self._loaded_page = self._loaded_page_stack[index]
+
+    def empty_page_stack(self):
+        self._loaded_page_stack.clear()
 
     def save_page(self):
         with open(self._filename, "ab+") as file:
@@ -189,9 +203,9 @@ class IndexFilePageRecordEntry(IndexFilePageEntry):
         super().__init__()
 
     @property
-    def index(self):
+    def index(self) -> int:
         return self._index
 
     @property
-    def page_number(self):
+    def page_number(self) -> int:
         return self._page_number

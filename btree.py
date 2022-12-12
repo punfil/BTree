@@ -18,23 +18,7 @@ class BTree:
         print(record.serialize())
 
     def print_tree(self):
-        if self._index_file.get_number_of_records():
-            print("(", end="")
-        for i in range(self._index_file.get_number_of_records()):
-            if self._is_leaf is False:
-                # sons[i]->print_tree()
-                node = Node(self._degree)
-                node._index_file.load_page(self._index_file.loaded_page.get_particular_pointer_entry(i))
-                node.print_tree()
-            # print(keys[i])
-            record = self._index_file.loaded_page.get_particular_metadata_entry(i)
-            print(self._record_file.get_record_by_index(record.index, record.page_number))
-        if self._is_leaf is False:
-            node = Node(self._degree)
-            node._index_file.load_page(self._index_file.loaded_page.get_particular_pointer_entry(-1))
-            node.print_tree()
-        if self._index_file.get_number_of_records():
-            print(")", end="")
+        pass
 
     def reorganise(self):
         pass
