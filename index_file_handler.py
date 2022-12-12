@@ -73,22 +73,6 @@ class IndexFileHandler:
 
     def get_records_page_number(self, index):
         page_number = self._loaded_page.get_records_page_number(index)
-        if page_number is None:
-            # Check if there are more pages to check
-            if self._number_of_pages > 1:
-                # Determine if the record is on previous page or next one
-                if self._loaded_page.get_last_record_index() > index:
-                    # This should be on the previous page
-                    page_to_load_number = self._loaded_page.page_number - 1
-                else:
-                    page_to_load_number = self._loaded_page.page_number + 1
-                try:
-                    assert (0 <= page_to_load_number < self._number_of_pages)
-                except AssertionError:
-                    return None  # Such record doesn't exist
-                self.save_page()
-                self.load_page(page_to_load_number)
-                return self.get_records_page_number(index)
         return page_number
 
     def get_number_of_records(self):
