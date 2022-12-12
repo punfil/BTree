@@ -62,7 +62,7 @@ class ProgramManager:
         input_string = input("Please enter the record you would like to add in a format:\n KEY P(A) P(B) P(A∪B) I.E. "
                              "INT FLOAT FLOAT FLOAT\n")
         numbers = input_string.split(" ")
-        assert(len(numbers) == 1)#assert (len(numbers) == 4)
+        assert(len(numbers) == 1)  # assert (len(numbers) == 4)
         try:
             index = int(numbers[0])
             a_probability = random.random()  # float(numbers[1])

@@ -87,9 +87,17 @@ class IndexFileHandler:
         # When calling that make sure that there's place on this page!
         self._loaded_page.add_metadata_entry_between(IndexFilePageRecordEntry(index, page_number))
 
+    def add_new_page(self):
+        self._loaded_page.create_new_page(self._number_of_pages)
+        self._number_of_pages += 1
+
     @property
     def loaded_page(self):
         return self._loaded_page
+
+    @loaded_page.setter
+    def loaded_page(self, value):
+        self._loaded_page = value
 
 
 class IndexFilePage:
@@ -97,6 +105,11 @@ class IndexFilePage:
         self._metadata_entries = []
         self._pointer_entries = []
         self._page_number = page_number
+
+    def create_new_page(self, new_page_number):
+        self._page_number = new_page_number
+        self._pointer_entries.clear()
+        self._metadata_entries.clear()
 
     def add_last_metadata_entry(self, entry):
         self._metadata_entries.append(entry)
