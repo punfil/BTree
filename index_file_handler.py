@@ -32,8 +32,9 @@ class IndexFileHandler:
                     case 0:  # It's the address
                         file_position = int.from_bytes(file.read(Constants.INTEGER_SIZE), Constants.LITERAL)
                         if file_position == maxsize:
-                            break
-                        self._loaded_page.add_last_pointer_entry(IndexFilePageAddressEntry(file_position))
+                            self._loaded_page.add_last_pointer_entry(None)
+                        else:
+                            self._loaded_page.add_last_pointer_entry(IndexFilePageAddressEntry(file_position))
                     case 1:  # It's the index
                         index = int.from_bytes(file.read(Constants.INTEGER_SIZE), Constants.LITERAL)
                         if index == maxsize:
@@ -153,6 +154,7 @@ class IndexFilePage:
                 new_metadata.append(element)
         self._metadata_entries = new_metadata
         self.fill()
+        self._keys_count += 1
 
     def add_pointer_entry_between(self, entry, ptr):
         new_pointers = []

@@ -73,6 +73,7 @@ class RecordFileHandler:
 
     def get_record_by_index(self, index, page_number):
         if not self._loaded_page.page_number == page_number:
+            self.save_page()
             self.load_existing_page(page_number)
         return self._loaded_page.get_record(index)
 
