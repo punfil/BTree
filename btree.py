@@ -156,5 +156,6 @@ class BTree:
         pass
 
     def update_record(self, old_index, index, a_probability, b_probability, sum_probability):
-        self.delete_record(old_index)
-        self.add_record(index, a_probability, b_probability, sum_probability)
+        if self.read_record(index) is None:
+            self.delete_record(old_index)
+            self.add_record(index, a_probability, b_probability, sum_probability)

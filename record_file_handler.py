@@ -9,13 +9,11 @@ from record import Record
 
 
 def binary_to_float(binary):
-    x = int(binary, 2).to_bytes(8, byteorder="big")
-    return struct.unpack('>d', x)[0]
+    return struct.unpack('d', binary)[0]
 
 
 def float_to_binary(float_number):
-    [d] = struct.unpack(">Q", struct.pack(">d", float_number))
-    return bytes(f'{d:064b}', encoding="utf-8")
+    return struct.pack('d', float_number)
 
 
 class RecordFileHandler:
@@ -24,7 +22,7 @@ class RecordFileHandler:
         self._loaded_page = RecordFilePage(0)
         self._number_of_pages = 1
         # Index + P(A) + P(B) + P(AUB)
-        self._page_size = page_size * Constants.INTEGER_SIZE  #+ 3 * Constants.FLOAT_SIZE)
+        self._page_size = page_size * (Constants.INTEGER_SIZE + 3 * Constants.FLOAT_SIZE)
         self._max_number_of_records = page_size
 
     def create_new_page(self):
@@ -48,11 +46,12 @@ class RecordFileHandler:
                 if index == maxsize:
                     return
                 # It's the P(A)
-                # a_probability = random.random()  # binary_to_float(file.read(Constants.FLOAT_SIZE))
+                a_probability = binary_to_float(file.read(Constants.FLOAT_SIZE))
                 # It's the P(B)
-                # b_probability = random.random()  # binary_to_float(file.read(Constants.FLOAT_SIZE))
+                b_probability = binary_to_float(file.read(Constants.FLOAT_SIZE))
                 # It's the P(AUB)
-                # sum_probability = random.random()  # binary_to_float(file.read(Constants.FLOAT_SIZE))
+                sum_probability = binary_to_float(file.read(Constants.FLOAT_SIZE))
+                bytes_read += Constants.FLOAT_SIZE * 3
                 self._loaded_page.add_last_record(Record(index, random.random(), random.random(), random.random()))
 
     def save_page(self):
@@ -63,10 +62,10 @@ class RecordFileHandler:
             while bytes_written < self._page_size and entry is not None:
                 file.write(entry.index.to_bytes(Constants.INTEGER_SIZE, Constants.LITERAL))
                 bytes_written += Constants.INTEGER_SIZE
-                #file.write(float_to_binary(entry.a_probability))
-                #file.write(float_to_binary(entry.b_probability))
-                #file.write(float_to_binary(entry.sum_probability))
-                #bytes_written += Constants.FLOAT_SIZE * 3
+                file.write(float_to_binary(entry.a_probability))
+                file.write(float_to_binary(entry.b_probability))
+                file.write(float_to_binary(entry.sum_probability))
+                bytes_written += Constants.FLOAT_SIZE * 3
                 entry = self._loaded_page.remove_first_record()
             while bytes_written < self._page_size:
                 file.write(sys.maxsize.to_bytes(Constants.FLOAT_SIZE, Constants.LITERAL))
