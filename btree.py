@@ -11,7 +11,7 @@ class BTree:
         self._record_file = RecordFileHandler(2 * degree)
 
     def add_record(self, index, a_probability, b_probability, sum_probability, recurrency_depth):
-        if recurrency_depth == 0 and self._index_file.loaded_page.keys_count == 2 * self._d - 1:
+        if recurrency_depth == 0 and self._index_file.loaded_page.keys_count == 2 * self._d:
             # From btree.cpp
             current_page = self._index_file.loaded_page
 
@@ -52,14 +52,14 @@ class BTree:
                 while i >= 0 and self._index_file.loaded_page.metadata_entries[i].index > index:
                     i -= 1
 
-                i += 1 # Huh?
+                i += 1
 
                 old_parent = self._index_file.loaded_page
                 self._index_file.load_page(self._index_file.loaded_page.pointer_entries[i].file_position)
                 ison = self._index_file.loaded_page
                 self._index_file.loaded_page = old_parent
 
-                if ison.keys_count == 2 * self._d - 1:
+                if ison.keys_count == 2 * self._d:
                     self.split_child(i, ison)
                     if index > old_parent.metadata_entries[i].index:
                         i += 1
@@ -81,14 +81,14 @@ class BTree:
         self._index_file.add_new_page(old_root.is_leaf)
         temp = self._index_file.loaded_page
 
-        temp.keys_count = self._d - 1
+        temp.keys_count = self._d
         self._index_file.loaded_page = new_root
 
-        for j in range(0, self._d - 1):
+        for j in range(0, self._d):
             temp.metadata_entries[j] = old_root.metadata_entries[j + self._d]
 
         if not old_root.is_leaf:
-            for j in range(0, self._d):
+            for j in range(0, self._d + 1):
                 temp.pointer_entries[j] = old_root.pointer_entries[j + self._d]
 
         old_root.keys_count = self._d - 1

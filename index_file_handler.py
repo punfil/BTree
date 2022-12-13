@@ -63,7 +63,7 @@ class IndexFileHandler:
         self._loaded_page_stack.clear()
 
     def pop_last_page_stack(self):
-        self._loaded_page = self._loaded_page_stack.pop(0)
+        self._loaded_page = self._loaded_page_stack.pop(-1)
 
     def get_page_stack_size(self):
         return len(self._loaded_page_stack)
