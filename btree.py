@@ -21,8 +21,8 @@ class BTree:
             self._index_file.add_new_page()
             son_page = self._index_file.loaded_page
             # They will be switched places anyway, that's why son_page.page_number not current_page
-            self._index_file.loaded_page.pointer_entries.append(IndexFilePageAddressEntry(son_page.page_number))
-            self.split_child(current_page)
+            son_page.pointer_entries[0] = IndexFilePageAddressEntry(current_page.page_number)
+            self.split_child(0, current_page)
             # Switch places in real file
             current_page.page_number, son_page.page_number = son_page.page_number, current_page.page_number
             # Save new parent page after split_child
@@ -34,18 +34,24 @@ class BTree:
             self._index_file.loaded_page = son_page
             self.add_record(index, a_probability, b_probability, sum_probability)
 
-    def split_child(self, old_root):
+    def split_child(self, i, old_root):
         new_root = self._index_file.loaded_page
         self._index_file.add_new_page()
         temp = self._index_file.loaded_page
         self._index_file.loaded_page = new_root
-        for _ in range(self._d - 1):
-            temp.metadata_entries.append(old_root.metadata_entries.pop(0))
-        if len(old_root.pointer_entries):
-            for _ in range(self._d):
-                temp.pointer_entries.append(old_root.pointer_entries.pop(0))
-        new_root.pointer_entries.append(IndexFilePageAddressEntry(temp.page_number))
-        new_root.metadata_entries.append(old_root.metadata_entries.pop(0))
+        for j in range(0, self._d - 1):
+            temp.metadata_entries[j] = old_root.metadata_entries[j + self._d]
+        if old_root.get_number_of_pointer_entries():
+            for j in range(0, self._d):
+                temp.pointer_entries[j] = old_root.pointer_entries[j + self._d]
+        for j in range(new_root.get_number_of_metadata_entries(), i, -1):
+            new_root.pointer_entries[j + 1] = new_root.pointer_entries[j]
+        new_root.pointer_entries[i + 1] = IndexFilePageAddressEntry(temp.page_number)
+        for j in range(self._d - 1, i - 1, -1):
+            new_root.metadata_entries[j + 1] = new_root.metadata_entries[j]
+        new_root.metadata_entries[i] = old_root.metadata_entries[self._d - 1]
+        self._index_file.save_page()
+        self._index_file = new_root
 
     def read_record(self, index):
         pass
