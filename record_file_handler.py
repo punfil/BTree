@@ -1,6 +1,7 @@
 import struct
 import sys
 from os import path
+import random
 from sys import maxsize
 
 from contants import Constants
@@ -14,7 +15,7 @@ def binary_to_float(binary):
 
 def float_to_binary(float_number):
     [d] = struct.unpack(">Q", struct.pack(">d", float_number))
-    return bytes(f'{d:064b}')
+    return bytes(f'{d:064b}', encoding="utf-8")
 
 
 class RecordFileHandler:
@@ -23,7 +24,7 @@ class RecordFileHandler:
         self._loaded_page = RecordFilePage(0)
         self._number_of_pages = 1
         # Index + P(A) + P(B) + P(AUB)
-        self._page_size = page_size * (Constants.INTEGER_SIZE + 3 * Constants.FLOAT_SIZE)
+        self._page_size = page_size * Constants.INTEGER_SIZE  #+ 3 * Constants.FLOAT_SIZE)
         self._max_number_of_records = page_size
 
     def create_new_page(self):
@@ -43,15 +44,16 @@ class RecordFileHandler:
             while bytes_read < self._page_size:
                 # It's the index
                 index = int.from_bytes(file.read(Constants.INTEGER_SIZE), Constants.LITERAL)
+                bytes_read += Constants.INTEGER_SIZE
                 if index == maxsize:
                     return
                 # It's the P(A)
-                a_probability = binary_to_float(file.read(Constants.FLOAT_SIZE))
+                # a_probability = random.random()  # binary_to_float(file.read(Constants.FLOAT_SIZE))
                 # It's the P(B)
-                b_probability = binary_to_float(file.read(Constants.FLOAT_SIZE))
+                # b_probability = random.random()  # binary_to_float(file.read(Constants.FLOAT_SIZE))
                 # It's the P(AUB)
-                sum_probability = binary_to_float(file.read(Constants.FLOAT_SIZE))
-                self._loaded_page.add_last_record(Record(index, a_probability, b_probability, sum_probability))
+                # sum_probability = random.random()  # binary_to_float(file.read(Constants.FLOAT_SIZE))
+                self._loaded_page.add_last_record(Record(index, random.random(), random.random(), random.random()))
 
     def save_page(self):
         with open(self._filename, "ab+") as file:
@@ -61,10 +63,10 @@ class RecordFileHandler:
             while bytes_written < self._page_size and entry is not None:
                 file.write(entry.index.to_bytes(Constants.INTEGER_SIZE, Constants.LITERAL))
                 bytes_written += Constants.INTEGER_SIZE
-                file.write(float_to_binary(entry.a_probability))
-                file.write(float_to_binary(entry.b_probability))
-                file.write(float_to_binary(entry.sum_probability))
-                bytes_written += Constants.FLOAT_SIZE * 3
+                #file.write(float_to_binary(entry.a_probability))
+                #file.write(float_to_binary(entry.b_probability))
+                #file.write(float_to_binary(entry.sum_probability))
+                #bytes_written += Constants.FLOAT_SIZE * 3
             while bytes_written < self._page_size:
                 file.write(sys.maxsize.to_bytes(Constants.FLOAT_SIZE, Constants.LITERAL))
                 bytes_written += Constants.FLOAT_SIZE
@@ -83,7 +85,7 @@ class RecordFileHandler:
             return self._loaded_page.page_number
         else:
             # No, there's no space on this page. Check the last one.
-            if self._loaded_page.page_number != self._number_of_pages:
+            if self._loaded_page.page_number != self._number_of_pages - 1:
                 # The currently loaded page is not the last one
                 self.save_page()
                 self.load_existing_page(self._number_of_pages - 1)

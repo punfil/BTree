@@ -59,7 +59,7 @@ class ProgramManager:
                     exit_program = True
 
     def add_record_command(self):
-        input_string = input("Please enter the record you would like to add in a format:\n KEY P(A) P(B) P(A∪B) I.E. "
+        input_string = input("Please enter the record you would like to add in a format:\nKEY P(A) P(B) P(AUB) I.E. "
                              "INT FLOAT FLOAT FLOAT\n")
         numbers = input_string.split(" ")
         assert(len(numbers) == 1)  # assert (len(numbers) == 4)
@@ -74,7 +74,10 @@ class ProgramManager:
         except AssertionError:
             print("Wrong value entered!")
             return
-        self._btree.add_record(index, a_probability, b_probability, sum_probability)
+        except ValueError:
+            print("Wrong value entered!")
+            return
+        self._btree.add_record(index, a_probability, b_probability, sum_probability, 0)
 
     def read_record_command(self):
         input_string = input("Please enter index of record you would like to read.\n")

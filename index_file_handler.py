@@ -1,3 +1,5 @@
+import itertools
+import sys
 from os import path
 from sys import maxsize
 
@@ -40,6 +42,7 @@ class IndexFileHandler:
                         page_number_from_file = int.from_bytes(file.read(Constants.INTEGER_SIZE), Constants.LITERAL)
                         self._loaded_page.add_last_metadata_entry(
                             IndexFilePageRecordEntry(index, page_number_from_file))
+                        self._loaded_page.keys_count += 1
                 bytes_read += Constants.INTEGER_SIZE
                 numbers_read += 1
         self._loaded_page.fill()
@@ -60,20 +63,30 @@ class IndexFileHandler:
     def pop_last_page_stack(self):
         self._loaded_page = self._loaded_page_stack.pop(0)
 
+    def get_page_stack_size(self):
+        return len(self._loaded_page_stack)
+
     def save_page(self):
         with open(self._filename, "ab+") as file:
+            file.seek(0)
             file.seek(self._page_size * self._loaded_page.page_number)
-            bytes_written = 0
-            entry = self._loaded_page.remove_first_metadata_entry()
-            while bytes_written < self._page_size and entry is not None:
-                file.write(entry.index.to_bytes(Constants.INTEGER_SIZE, Constants.LITERAL))
-                bytes_written += Constants.INTEGER_SIZE
-                file.write(entry.page_number.to_bytes(Constants.INTEGER_SIZE, Constants.LITERAL))
-                bytes_written += Constants.INTEGER_SIZE
-                entry = self._loaded_page.remove_first_metadata_entry()
-            while bytes_written < self._page_size:
-                file.write(maxsize.to_bytes(Constants.INTEGER_SIZE, Constants.LITERAL))
-                bytes_written += Constants.INTEGER_SIZE
+            for metadata, pointer in zip(self._loaded_page.metadata_entries, self._loaded_page.pointer_entries):
+                # First write pointer
+                if pointer is None:
+                    file.write(sys.maxsize.to_bytes(Constants.INTEGER_SIZE, Constants.LITERAL))
+                else:
+                    file.write(pointer.file_position.to_bytes(Constants.INTEGER_SIZE, Constants.LITERAL))
+                if metadata is None:
+                    file.write(sys.maxsize.to_bytes(Constants.INTEGER_SIZE, Constants.LITERAL))
+                    file.write(sys.maxsize.to_bytes(Constants.INTEGER_SIZE, Constants.LITERAL))
+                else:
+                    file.write(metadata.index.to_bytes(Constants.INTEGER_SIZE, Constants.LITERAL))
+                    file.write(metadata.page_number.to_bytes(Constants.INTEGER_SIZE, Constants.LITERAL))
+            pointer = self._loaded_page.pointer_entries[-1]
+            if pointer is None:
+                file.write(sys.maxsize.to_bytes(Constants.INTEGER_SIZE, Constants.LITERAL))
+            else:
+                file.write(pointer.file_position.to_bytes(Constants.INTEGER_SIZE, Constants.LITERAL))
 
     def get_records_page_number(self, index):
         page_number = self._loaded_page.get_records_page_number(index)
@@ -90,7 +103,7 @@ class IndexFileHandler:
         self._loaded_page.add_metadata_entry_between(IndexFilePageRecordEntry(index, page_number))
 
     def add_new_page(self):
-        self._loaded_page.create_new_page(self._number_of_pages)
+        self._loaded_page = IndexFilePage(self._page_size_in_records, self._number_of_pages)
         self._number_of_pages += 1
 
     @property
@@ -108,17 +121,13 @@ class IndexFilePage:
         self._pointer_entries = [None for _ in range(page_size+1)]
         self._page_size = page_size
         self._page_number = page_number
+        self._keys_count = 0
 
     def fill(self):
         while len(self._metadata_entries) < self._page_size:
             self._metadata_entries.append(None)
         while len(self._pointer_entries) < self._page_size + 1:
             self._pointer_entries.append(None)
-
-    def create_new_page(self, new_page_number):
-        self._page_number = new_page_number
-        self._pointer_entries = [None for _ in range(24)]
-        self._metadata_entries = [None for _ in range(24)]
 
     def add_last_metadata_entry(self, entry):
         self._metadata_entries[max(self._metadata_entries.index(None), 0)] = entry
@@ -182,11 +191,15 @@ class IndexFilePage:
         return self._page_size - self._metadata_entries.count(None)
 
     def get_number_of_pointer_entries(self):
-        return self._page_size - self._pointer_entries.count(None)
+        return self._page_size - self._pointer_entries.count(None) + 1
 
     @property
     def page_number(self):
         return self._page_number
+
+    @page_number.setter
+    def page_number(self, new_page_number):
+        self._page_number = new_page_number
 
     @property
     def metadata_entries(self):
@@ -195,6 +208,14 @@ class IndexFilePage:
     @property
     def pointer_entries(self):
         return self._pointer_entries
+
+    @property
+    def keys_count(self):
+        return self._keys_count
+
+    @keys_count.setter
+    def keys_count(self, new):
+        self._keys_count = new
 
 
 class IndexFilePageAddressEntry:
