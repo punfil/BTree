@@ -60,7 +60,7 @@ class BTree:
 
                 if ison.keys_count == 2 * self._d - 1:
                     self.split_child(i, ison)
-                    if index > old_parent.metadata_entries[i]:
+                    if index > old_parent.metadata_entries[i].index:
                         i += 1
                 self.add_record(index, a_probability, b_probability, sum_probability, recurrency_depth + 1)
                 self._index_file.save_page()
@@ -73,10 +73,11 @@ class BTree:
         self._index_file.add_new_page(old_root.is_leaf)
         temp = self._index_file.loaded_page
 
-        temp.keys_count = self._d - 1
+        #temp.keys_count = self._d - 1
+        temp.keys_count = self._d
         self._index_file.loaded_page = new_root
 
-        for j in range(0, self._d - 1):
+        for j in range(0, self._d):
             temp.metadata_entries[j] = old_root.metadata_entries[j + self._d]
 
         if not old_root.is_leaf:
