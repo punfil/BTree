@@ -58,7 +58,7 @@ class ProgramManager:
                 case ProgramCommand.ADD_RECORD:
                     self.add_record_command()
                 case ProgramCommand.READ_RECORD:
-                    pass
+                    self.read_record_command()
                 case ProgramCommand.PRINT_TREE:
                     self.print_tree_command()
                 case ProgramCommand.REORGANISE:
@@ -98,7 +98,9 @@ class ProgramManager:
         except ValueError:
             print("Invalid index of record!\n")
             return
-        self._btree.read_record(index)
+        record = self._btree.read_record(index)
+        if record is not None:
+            print(record.serialize())
 
     def print_tree_command(self):
         self._btree.print_tree()

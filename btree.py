@@ -110,7 +110,24 @@ class BTree:
         self._index_file.loaded_page = new_root
 
     def read_record(self, index):
-        pass
+        i = self._index_file.loaded_page.keys_count - 1
+        while i > 0 and index < self._index_file.loaded_page.metadata_entries[i].index:
+            i -= 1
+        if self._index_file.loaded_page.metadata_entries[i].index == index:
+            return self._record_file.get_record_by_index(self._index_file.loaded_page.metadata_entries[i].index, self._index_file.loaded_page.metadata_entries[i].page_number)
+        elif self._index_file.loaded_page.is_leaf is False:
+            self._index_file.save_page()
+            self._index_file.put_current_page_on_page_stack()
+            if index < self._index_file.loaded_page.metadata_entries[i].index:
+                self._index_file.load_page(self._index_file.loaded_page.pointer_entries[i].file_position)
+            else:
+                self._index_file.load_page(self._index_file.loaded_page.pointer_entries[i+1].file_position)
+            record = self.read_record(index)
+            self._index_file.pop_last_page_stack()
+            return record
+        else:
+            print("Such record doesn't exist!")
+            return None
 
     def print_tree(self):
         print("( ", end="")
