@@ -1,4 +1,3 @@
-import itertools
 import sys
 from os import path
 from sys import maxsize
@@ -9,11 +8,12 @@ from contants import Constants
 class IndexFileHandler:
     def __init__(self, page_size=4):  # Page size in number of records (which metadata are here)
         self._filename = Constants.INDEXES_FILENAME
-        self._loaded_page: IndexFilePage = IndexFilePage(page_size, 0)
+        self._loaded_page: IndexFilePage = IndexFilePage(page_size, 0, True)
         self._loaded_page_stack = []
         self._number_of_pages = 1
         self._page_size = page_size * (3 * Constants.INTEGER_SIZE) + Constants.INTEGER_SIZE
         self._page_size_in_records = page_size
+        self.save_page()
 
     def load_page(self, page_number):
         try:
@@ -21,7 +21,7 @@ class IndexFileHandler:
             assert (0 <= page_number < self._number_of_pages)
         except AssertionError:
             return
-        self._loaded_page = IndexFilePage(self._page_size_in_records, page_number)
+        self._loaded_page = IndexFilePage(self._page_size_in_records, page_number, True)
         with open(self._filename, "rb") as file:
             file.seek(self._page_size * page_number)
             bytes_read = 0
@@ -35,6 +35,7 @@ class IndexFileHandler:
                             self._loaded_page.add_last_pointer_entry(None)
                         else:
                             self._loaded_page.add_last_pointer_entry(IndexFilePageAddressEntry(file_position))
+                            self._loaded_page.is_leaf = False
                     case 1:  # It's the index
                         index = int.from_bytes(file.read(Constants.INTEGER_SIZE), Constants.LITERAL)
                         if index == maxsize:
@@ -68,21 +69,24 @@ class IndexFileHandler:
         return len(self._loaded_page_stack)
 
     def save_page(self):
-        with open(self._filename, "ab+") as file:
+        with open(self._filename, "r+b") as file:
             file.seek(0)
-            file.seek(self._page_size * self._loaded_page.page_number)
+            change = self._page_size * self._loaded_page.page_number
+            file.seek(change)
+            records_written = 0
             for metadata, pointer in zip(self._loaded_page.metadata_entries, self._loaded_page.pointer_entries):
                 # First write pointer
-                if pointer is None:
+                if pointer is None or self._loaded_page.is_leaf or records_written > self._loaded_page.keys_count:
                     file.write(sys.maxsize.to_bytes(Constants.INTEGER_SIZE, Constants.LITERAL))
                 else:
                     file.write(pointer.file_position.to_bytes(Constants.INTEGER_SIZE, Constants.LITERAL))
-                if metadata is None:
+                if metadata is None or records_written >= self._loaded_page.keys_count:
                     file.write(sys.maxsize.to_bytes(Constants.INTEGER_SIZE, Constants.LITERAL))
                     file.write(sys.maxsize.to_bytes(Constants.INTEGER_SIZE, Constants.LITERAL))
                 else:
                     file.write(metadata.index.to_bytes(Constants.INTEGER_SIZE, Constants.LITERAL))
                     file.write(metadata.page_number.to_bytes(Constants.INTEGER_SIZE, Constants.LITERAL))
+                    records_written += 1
             pointer = self._loaded_page.pointer_entries[-1]
             if pointer is None:
                 file.write(sys.maxsize.to_bytes(Constants.INTEGER_SIZE, Constants.LITERAL))
@@ -94,18 +98,16 @@ class IndexFileHandler:
         return page_number
 
     def get_number_of_records(self):
-        return self._loaded_page.get_number_of_metadata_entries()
-
-    def get_number_of_sons(self):
-        return self._loaded_page.get_number_of_pointer_entries()
+        return self._loaded_page.keys_count
 
     def add_record(self, index, page_number):
         # When calling that make sure that there's place on this page!
         self._loaded_page.add_metadata_entry_between(IndexFilePageRecordEntry(index, page_number))
 
-    def add_new_page(self):
-        self._loaded_page = IndexFilePage(self._page_size_in_records, self._number_of_pages)
+    def add_new_page(self, is_leaf):
+        self._loaded_page = IndexFilePage(self._page_size_in_records, self._number_of_pages, is_leaf)
         self._number_of_pages += 1
+        self.save_page()
 
     @property
     def loaded_page(self):
@@ -117,12 +119,13 @@ class IndexFileHandler:
 
 
 class IndexFilePage:
-    def __init__(self, page_size, page_number):
+    def __init__(self, page_size, page_number, is_leaf):
         self._metadata_entries = [None for _ in range(page_size)]
         self._pointer_entries = [None for _ in range(page_size+1)]
         self._page_size = page_size
         self._page_number = page_number
         self._keys_count = 0
+        self._is_leaf = is_leaf
 
     def fill(self):
         while len(self._metadata_entries) < self._page_size:
@@ -218,6 +221,14 @@ class IndexFilePage:
     @keys_count.setter
     def keys_count(self, new):
         self._keys_count = new
+
+    @property
+    def is_leaf(self):
+        return self._is_leaf
+
+    @is_leaf.setter
+    def is_leaf(self, new):
+        self._is_leaf = new
 
 
 class IndexFilePageAddressEntry:

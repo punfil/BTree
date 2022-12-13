@@ -1,5 +1,7 @@
 import random
+import os
 
+from contants import Constants
 from btree import BTree
 
 
@@ -29,6 +31,16 @@ class ProgramManager:
         print(f"{ProgramCommand.QUIT} - QUIT THE PROGRAM")
 
     def run_the_program(self):
+        try:
+            os.remove(Constants.RECORDS_FILENAME)
+        except FileNotFoundError:
+            pass
+        try:
+            os.remove(Constants.INDEXES_FILENAME)
+        except FileNotFoundError:
+            pass
+        open(Constants.INDEXES_FILENAME, "w+").close()
+        open(Constants.RECORDS_FILENAME, "w+").close()
         exit_program = False
         print("Welcome to the program that implements the BTree data structure with index file!\nPlease enter tree "
               "order:")

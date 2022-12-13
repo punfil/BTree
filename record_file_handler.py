@@ -38,7 +38,7 @@ class RecordFileHandler:
         except AssertionError:
             return
         self._loaded_page = RecordFilePage(page_number)
-        with open(self._filename, "rb") as file:
+        with open(self._filename, "rb+") as file:
             file.seek(self._page_size * page_number)
             bytes_read = 0
             while bytes_read < self._page_size:
@@ -56,7 +56,7 @@ class RecordFileHandler:
                 self._loaded_page.add_last_record(Record(index, random.random(), random.random(), random.random()))
 
     def save_page(self):
-        with open(self._filename, "ab+") as file:
+        with open(self._filename, "r+b") as file:
             file.seek(self._page_size * self._loaded_page.page_number)
             bytes_written = 0
             entry = self._loaded_page.remove_first_record()
@@ -67,6 +67,7 @@ class RecordFileHandler:
                 #file.write(float_to_binary(entry.b_probability))
                 #file.write(float_to_binary(entry.sum_probability))
                 #bytes_written += Constants.FLOAT_SIZE * 3
+                entry = self._loaded_page.remove_first_record()
             while bytes_written < self._page_size:
                 file.write(sys.maxsize.to_bytes(Constants.FLOAT_SIZE, Constants.LITERAL))
                 bytes_written += Constants.FLOAT_SIZE
@@ -112,7 +113,10 @@ class RecordFilePage:
         self._records.insert(index, record)
 
     def remove_first_record(self):
-        return self._records.pop(0)
+        try:
+            return self._records.pop(0)
+        except IndexError:
+            return None
 
     def remove_record_between(self, index):
         self._records.pop(index)
