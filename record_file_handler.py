@@ -24,6 +24,15 @@ class RecordFileHandler:
         # Index + P(A) + P(B) + P(AUB)
         self._page_size = page_size * (Constants.INTEGER_SIZE + 3 * Constants.FLOAT_SIZE)
         self._max_number_of_records = page_size
+        self._number_of_reads = 0
+        self._number_of_writes = 0
+
+    def clear_io_operations_counters(self):
+        self._number_of_reads = 0
+        self._number_of_writes = 0
+
+    def get_io_operations(self):
+        return self._number_of_reads, self._number_of_writes
 
     def create_new_page(self):
         self._loaded_page.create_new_page(self._number_of_pages)

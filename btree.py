@@ -10,7 +10,15 @@ class BTree:
         self._index_file = IndexFileHandler(2 * degree)
         self._record_file = RecordFileHandler(2 * degree)
 
+    @staticmethod
+    def print_io_operations(reads, writes):
+        print(f"During operation reads: {reads} writes: {writes}")
+
     def add_record(self, index, a_probability, b_probability, sum_probability, recurrency_depth):
+        if recurrency_depth == 0:
+            self._index_file.clear_io_operations_counters()
+            self._record_file.clear_io_operations_counters()
+
         if recurrency_depth == 0 and self._index_file.loaded_page.keys_count == 2 * self._d:
             # From btree.cpp
             current_page = self._index_file.loaded_page
@@ -73,6 +81,10 @@ class BTree:
                 self.add_record(index, a_probability, b_probability, sum_probability, recurrency_depth + 1)
                 self._index_file.save_page()
                 self._index_file.loaded_page = old_parent
+        if recurrency_depth == 0:
+            ireads, iwrites = self._index_file.get_io_operations()
+            rreads, rwrites = self._index_file.get_io_operations()
+            self.print_io_operations(ireads + rreads, iwrites + rwrites)
 
     def split_child(self, i, old_root):
         # this should be loaded as loaded_page
@@ -110,26 +122,43 @@ class BTree:
         self._index_file.loaded_page = new_root
 
     def read_record(self, index):
+        if self._index_file.get_page_stack_size() == 0:
+            self._index_file.clear_io_operations_counters()
+            self._record_file.clear_io_operations_counters()
+
         i = self._index_file.loaded_page.keys_count - 1
         while i > 0 and index < self._index_file.loaded_page.metadata_entries[i].index:
             i -= 1
         if self._index_file.loaded_page.metadata_entries[i].index == index:
-            return self._record_file.get_record_by_index(self._index_file.loaded_page.metadata_entries[i].index, self._index_file.loaded_page.metadata_entries[i].page_number)
+            return self._record_file.get_record_by_index(self._index_file.loaded_page.metadata_entries[i].index,
+                                                         self._index_file.loaded_page.metadata_entries[i].page_number)
         elif self._index_file.loaded_page.is_leaf is False:
             self._index_file.save_page()
             self._index_file.put_current_page_on_page_stack()
             if index < self._index_file.loaded_page.metadata_entries[i].index:
                 self._index_file.load_page(self._index_file.loaded_page.pointer_entries[i].file_position)
             else:
-                self._index_file.load_page(self._index_file.loaded_page.pointer_entries[i+1].file_position)
+                self._index_file.load_page(self._index_file.loaded_page.pointer_entries[i + 1].file_position)
             record = self.read_record(index)
             self._index_file.pop_last_page_stack()
+
+            ireads, iwrites = self._index_file.get_io_operations()
+            rreads, rwrites = self._index_file.get_io_operations()
+            self.print_io_operations(ireads + rreads, iwrites + rwrites)
+
             return record
         else:
             print("Such record doesn't exist!")
+            ireads, iwrites = self._index_file.get_io_operations()
+            rreads, rwrites = self._index_file.get_io_operations()
+            self.print_io_operations(ireads + rreads, iwrites + rwrites)
             return None
 
     def print_tree(self):
+        if self._index_file.get_page_stack_size() == 0:
+            self._index_file.clear_io_operations_counters()
+            self._record_file.clear_io_operations_counters()
+
         print("( ", end="")
         a = self._index_file.loaded_page.keys_count
         for i in range(0, self._index_file.loaded_page.keys_count):
@@ -139,15 +168,21 @@ class BTree:
                 self._index_file.load_page(self._index_file.loaded_page.pointer_entries[i].file_position)
                 self.print_tree()
                 self._index_file.pop_last_page_stack()
-            print(self._record_file.get_record_by_index(self._index_file.loaded_page.metadata_entries[i].index, self._index_file.loaded_page.metadata_entries[i].page_number).serialize(), end=" ")
+            print(self._record_file.get_record_by_index(self._index_file.loaded_page.metadata_entries[i].index,
+                                                        self._index_file.loaded_page.metadata_entries[
+                                                            i].page_number).serialize(), end=" ")
         if not self._index_file.loaded_page.is_leaf != 0:
             self._index_file.put_current_page_on_page_stack()
             self._index_file.load_page(self._index_file.loaded_page.pointer_entries[a].file_position)
             self.print_tree()
             self._index_file.pop_last_page_stack()
         print(") ", end="")
+
         if self._index_file.get_page_stack_size() == 0:
-            print("") # Enter at the end
+            print("")  # Enter at the end
+            ireads, iwrites = self._index_file.get_io_operations()
+            rreads, rwrites = self._record_file.get_io_operations()
+            self.print_io_operations(ireads + rreads, iwrites + rwrites)
 
     def reorganise(self):
         pass

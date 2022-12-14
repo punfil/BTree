@@ -13,7 +13,16 @@ class IndexFileHandler:
         self._number_of_pages = 1
         self._page_size = page_size * (3 * Constants.INTEGER_SIZE) + Constants.INTEGER_SIZE
         self._page_size_in_records = page_size
+        self._number_of_reads = 0
+        self._number_of_writes = 0
         self.save_page()
+
+    def clear_io_operations_counters(self):
+        self._number_of_reads = 0
+        self._number_of_writes = 0
+
+    def get_io_operations(self):
+        return self._number_of_reads, self._number_of_writes
 
     def load_page(self, page_number):
         try:
@@ -21,6 +30,7 @@ class IndexFileHandler:
             assert (0 <= page_number < self._number_of_pages)
         except AssertionError:
             return
+        self._number_of_reads += 1
         self._loaded_page = IndexFilePage(self._page_size_in_records, page_number, True)
         with open(self._filename, "rb") as file:
             file.seek(self._page_size * page_number)
@@ -69,6 +79,7 @@ class IndexFileHandler:
         return len(self._loaded_page_stack)
 
     def save_page(self):
+        self._number_of_writes += 1
         with open(self._filename, "r+b") as file:
             file.seek(0)
             change = self._page_size * self._loaded_page.page_number
