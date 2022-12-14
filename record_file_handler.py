@@ -99,7 +99,7 @@ class RecordFileHandler:
                 # The currently loaded page is not the last one
                 self.save_page()
                 self.load_existing_page(self._number_of_pages - 1)
-                self.add_record(index, a_probability, b_probability, sum_probability)
+                return self.add_record(index, a_probability, b_probability, sum_probability)
             else:
                 # Currently loaded page is the last one. There's no space in existing pages. Add a new one!
                 self.save_page()
