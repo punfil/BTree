@@ -24,7 +24,6 @@ class ProgramManager:
         print(f"{ProgramCommand.ADD_RECORD} - ADD RECORD")
         print(f"{ProgramCommand.READ_RECORD} - READ RECORD")
         print(f"{ProgramCommand.PRINT_TREE} - PRINT TREE")
-        print(f"{ProgramCommand.REORGANISE} - REORGANISE")
         print(f"{ProgramCommand.DELETE} - DELETE RECORD")
         print(f"{ProgramCommand.UPDATE} - UPDATE RECORD")
         print(f"{ProgramCommand.QUIT} - QUIT THE PROGRAM")

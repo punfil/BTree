@@ -76,7 +76,7 @@ class BTree:
                     if ison.is_leaf:
                         # Try compensation left
                         if i > 0:
-                            self._index_file.loaded_page(self._index_file.loaded_page.pointer_entries[i-1].file_position)
+                            self._index_file.load_page(self._index_file.loaded_page.pointer_entries[i-1].file_position)
                             # Loaded page is left sibling of ison
                             if self._index_file.loaded_page.keys_count < 2 * self._d:
                                 # Compensation possible
@@ -87,7 +87,7 @@ class BTree:
                                 # Move from ison to parent
                                 old_parent.metadata_entries[i-1] = ison.metadata_entries[0]
                                 # Move entries in the ison to make place for new record
-                                for i in range(ison.keys_count-2):
+                                for i in range(ison.keys_count-1):
                                     ison.metadata_entries[i] = ison.metadata_entries[i+1]
                                 ison.keys_count -= 1
                                 # Add new entry in the ison
@@ -99,13 +99,13 @@ class BTree:
                                 return # Record added
                         # Try compensation right
                             if i < self._index_file.loaded_page.keys_count:
-                                self._index_file.loaded_page(self._index_file.loaded_page.pointer_entries[i+1].file_position)
+                                self._index_file.load_page(self._index_file.loaded_page.pointer_entries[i+1].file_position)
                                 # Loaded page is the right sibling of ison
                                 if self._index_file.loaded_page.keys_count < 2 * self._d:
                                     # Compensation possible
                                     # Move to the right sibling from parent
                                     # Make place for the new record
-                                    for i in range(self._index_file.loaded_page.keys_count - 1, 0, -1):
+                                    for i in range(self._index_file.loaded_page.keys_count - 1, -1, -1):
                                         self._index_file.loaded_page.metadata_entries[i+1] = self._index_file.loaded_page.metadata_entries[i]
                                     # Insert the record from parent
                                     self._index_file.loaded_page.metadata_entries[0] = old_parent.metadata_entries[i-1]
