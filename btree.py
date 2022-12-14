@@ -168,7 +168,7 @@ class BTree:
 
         new_root.pointer_entries[i + 1] = IndexFilePageAddressEntry(temp.page_number)
 
-        for j in range(self._d - 1, i - 1, -1):
+        for j in range(new_root.keys_count - 1, i - 1, -1):
             new_root.metadata_entries[j + 1] = new_root.metadata_entries[j]
 
         new_root.metadata_entries[i] = old_root.metadata_entries[self._d - 1]
