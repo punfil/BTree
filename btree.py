@@ -73,6 +73,55 @@ class BTree:
                 self._index_file.loaded_page = old_parent
 
                 if ison.keys_count == 2 * self._d:
+                    if ison.is_leaf:
+                        # Try compensation left
+                        if i > 0:
+                            self._index_file.loaded_page(self._index_file.loaded_page.pointer_entries[i-1].file_position)
+                            # Loaded page is left sibling of ison
+                            if self._index_file.loaded_page.keys_count < 2 * self._d:
+                                # Compensation possible
+                                # Move to the left sibling from parent
+                                self._index_file.loaded_page.metadata_entries[self._index_file.loaded_page.keys_count] = old_parent.metadata_entries[i-1]
+                                self._index_file.loaded_page.keys_count += 1
+                                self._index_file.save_page()
+                                # Move from ison to parent
+                                old_parent.metadata_entries[i-1] = ison.metadata_entries[0]
+                                # Move entries in the ison to make place for new record
+                                for i in range(ison.keys_count-2):
+                                    ison.metadata_entries[i] = ison.metadata_entries[i+1]
+                                ison.keys_count -= 1
+                                # Add new entry in the ison
+                                self._index_file.loaded_page = ison
+                                self.add_record(index, a_probability, b_probability, sum_probability, recurrency_depth + 1)
+                                self._index_file.save_page()
+                                self._index_file.loaded_page = old_parent
+                                self._index_file.save_page()
+                                return # Record added
+                        # Try compensation right
+                            if i < self._index_file.loaded_page.keys_count:
+                                self._index_file.loaded_page(self._index_file.loaded_page.pointer_entries[i+1].file_position)
+                                # Loaded page is the right sibling of ison
+                                if self._index_file.loaded_page.keys_count < 2 * self._d:
+                                    # Compensation possible
+                                    # Move to the right sibling from parent
+                                    # Make place for the new record
+                                    for i in range(self._index_file.loaded_page.keys_count - 1, 0, -1):
+                                        self._index_file.loaded_page.metadata_entries[i+1] = self._index_file.loaded_page.metadata_entries[i]
+                                    # Insert the record from parent
+                                    self._index_file.loaded_page.metadata_entries[0] = old_parent.metadata_entries[i-1]
+                                    self._index_file.loaded_page.keys_count += 1
+                                    self._index_file.save_page()
+                                    # Insert from current node to parent
+                                    old_parent.metadata_entries[i-1] = ison.metadata_entries[ison.keys_count-1]
+                                    ison.keys_count -= 1
+                                    # Add new record in the ison
+                                    self._index_file.loaded_page = ison
+                                    self.add_record(index, a_probability, b_probability, sum_probability, recurrency_depth + 1)
+                                    self._index_file.save_page()
+                                    self._index_file.loaded_page = old_parent
+                                    self._index_file.save_page()
+                                    return # Record added
+                    # Compensation impossible
                     self.split_child(i, ison)
                     if index > old_parent.metadata_entries[i].index:
                         i += 1
