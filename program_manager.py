@@ -9,7 +9,6 @@ class ProgramCommand:
     ADD_RECORD = 'A'
     READ_RECORD = 'R'
     PRINT_TREE = 'P'
-    REORGANISE = 'O'
     DELETE = 'D'
     UPDATE = 'U'
     QUIT = "Q"
@@ -61,8 +60,6 @@ class ProgramManager:
                     self.read_record_command()
                 case ProgramCommand.PRINT_TREE:
                     self.print_tree_command()
-                case ProgramCommand.REORGANISE:
-                    self.reorganise_command()
                 case ProgramCommand.DELETE:
                     self.delete_record_command()
                 case ProgramCommand.UPDATE:
@@ -101,12 +98,11 @@ class ProgramManager:
         record = self._btree.read_record(index)
         if record is not None:
             print(record.serialize())
+        else:
+            print("Such record doesn't exist!")
 
     def print_tree_command(self):
         self._btree.print_tree()
-
-    def reorganise_command(self):
-        self._btree.reorganise()
 
     def delete_record_command(self):
         input_string = input("Please enter index of the record you would like to delete.\n")

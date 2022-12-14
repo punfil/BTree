@@ -18,6 +18,11 @@ class BTree:
         if recurrency_depth == 0:
             self._index_file.clear_io_operations_counters()
             self._record_file.clear_io_operations_counters()
+            if self.read_record(index) is not None:
+                ireads, iwrites = self._index_file.get_io_operations()
+                rreads, rwrites = self._index_file.get_io_operations()
+                self.print_io_operations(ireads + rreads, iwrites + rwrites)
+                return
 
         if recurrency_depth == 0 and self._index_file.loaded_page.keys_count == 2 * self._d:
             # From btree.cpp
@@ -126,6 +131,9 @@ class BTree:
             self._index_file.clear_io_operations_counters()
             self._record_file.clear_io_operations_counters()
 
+        if not self._index_file.loaded_page.keys_count:
+            return None
+
         i = self._index_file.loaded_page.keys_count - 1
         while i > 0 and index < self._index_file.loaded_page.metadata_entries[i].index:
             i -= 1
@@ -148,7 +156,6 @@ class BTree:
 
             return record
         else:
-            print("Such record doesn't exist!")
             ireads, iwrites = self._index_file.get_io_operations()
             rreads, rwrites = self._index_file.get_io_operations()
             self.print_io_operations(ireads + rreads, iwrites + rwrites)
@@ -184,9 +191,6 @@ class BTree:
             rreads, rwrites = self._record_file.get_io_operations()
             self.print_io_operations(ireads + rreads, iwrites + rwrites)
 
-    def reorganise(self):
-        pass
-
     def delete_record(self, index):
         pass
 
@@ -194,3 +198,5 @@ class BTree:
         if self.read_record(index) is None:
             self.delete_record(old_index)
             self.add_record(index, a_probability, b_probability, sum_probability)
+        else:
+            print("Record with given new index already exists!")
