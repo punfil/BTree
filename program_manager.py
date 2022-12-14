@@ -3,6 +3,7 @@ import os
 
 from contants import Constants
 from btree import BTree
+from validator import Validator
 
 
 class ProgramCommand:
@@ -12,11 +13,18 @@ class ProgramCommand:
     DELETE = 'D'
     UPDATE = 'U'
     QUIT = "Q"
+    LOAD = "L"
+    VALIDATE = "V"
+    FILE_ADD = "INSERT"
+    FILE_PRINT = "PRINT"
+    FILE_DELETE = "DELETE"
 
 
 class ProgramManager:
     def __init__(self):
         self._btree = None
+        self._validator = None
+        self._d = None
         pass
 
     @staticmethod
@@ -27,6 +35,7 @@ class ProgramManager:
         print(f"{ProgramCommand.DELETE} - DELETE RECORD")
         print(f"{ProgramCommand.UPDATE} - UPDATE RECORD")
         print(f"{ProgramCommand.QUIT} - QUIT THE PROGRAM")
+        print(f"{ProgramCommand.LOAD} - LOAD COMMANDS FROM FILE")
 
     def run_the_program(self):
         try:
@@ -48,7 +57,9 @@ class ProgramManager:
         except ValueError:
             print("Please enter a valid BTree degree next time! Bye!")
             return
+        self._d = btree_degree_int
         self._btree = BTree(btree_degree_int)
+        self._validator = Validator()
         while exit_program is False:
             self.display_menu()
             command = input()
@@ -65,6 +76,10 @@ class ProgramManager:
                     self.update_record_command()
                 case ProgramCommand.QUIT:
                     exit_program = True
+                case ProgramCommand.LOAD:
+                    self.load_command()
+                case ProgramCommand.VALIDATE:
+                    self.validate()
 
     def add_record_command(self):
         input_string = input("Please enter the record you would like to add in a format:\nKEY P(A) P(B) P(AUB) I.E. "
@@ -130,3 +145,37 @@ class ProgramManager:
             print("Wrong value entered!")
             return
         self._btree.update_record(old_index, index, a_probability, b_probability, sum_probability)
+
+    def load_command(self, filename_arg=""):
+        # Load sequence of commands from the file
+        if filename_arg == "":
+            filename = input("Please enter filename of the file with commands: ")
+            try:
+                open(filename, "r").close()
+            except FileNotFoundError:
+                print("Such file doesn't exist")
+        else:
+            filename = filename_arg
+        with open(filename, "r") as f:
+            while True:
+                line = f.readline()
+                if not line:
+                    break
+                line = line.rstrip()
+                line_arr = line.split(Constants.FILE_DELIMITER)
+                cmd = line_arr[0]
+                if cmd == ProgramCommand.FILE_ADD:
+                    # self._btree.add_record(int(line_arr[1]), float(line_arr[2]), float(line_arr[3]), float(line_arr[4]), 0)
+                    self._btree.add_record(int(line_arr[1]), random.random(), random.random(), random.random(), 0)
+                elif cmd == ProgramCommand.FILE_PRINT:
+                    self._btree.print_tree()
+                elif cmd == ProgramCommand.FILE_DELETE:
+                    self._btree.delete_record(line_arr[1])
+
+    def validate(self):
+        cnt = int(input("How many records to test?"))
+        self._btree = BTree(self._d)
+        self._validator.add_x_records(cnt)
+        self.load_command(Constants.VALIDATOR_FILENAME)
+
+
