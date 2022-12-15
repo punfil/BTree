@@ -165,11 +165,13 @@ class ProgramManager:
                 line_arr = line.split(Constants.FILE_DELIMITER)
                 cmd = line_arr[0]
                 if cmd == ProgramCommand.FILE_ADD:
+                    print(f"INSERT {int(line_arr[1])}")
                     # self._btree.add_record(int(line_arr[1]), float(line_arr[2]), float(line_arr[3]), float(line_arr[4]), 0)
                     self._btree.add_record(int(line_arr[1]), random.random(), random.random(), random.random(), 0)
                 elif cmd == ProgramCommand.FILE_PRINT:
                     self._btree.print_tree()
                 elif cmd == ProgramCommand.FILE_DELETE:
+                    print(f"DELETE {int(line_arr[1])}")
                     self._btree.delete_record(line_arr[1])
 
     def validate(self):

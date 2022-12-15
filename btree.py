@@ -14,31 +14,34 @@ class BTree:
     def print_io_operations(reads, writes):
         print(f"During operation reads: {reads} writes: {writes}")
 
-    def compensate(self, left_node, right_node, parent, i):
+    def compensate(self, left_node, right_node, parent, i, new_record):
+        # Only for leafs
         left_node.keys_count = 0
         right_node.keys_count = 0
         records_list = []
         [records_list.append(x) for x in left_node.metadata_entries if x is not None]
-        [records_list.append(x) for x in right_node.metadata_entries if x is not None]
         records_list.append(parent.metadata_entries[i])
+        [records_list.append(x) for x in right_node.metadata_entries if x is not None]
+        records_list.append(new_record)
+        records_list.sort()
         pointers_list = []
         [pointers_list.append(x) for x in left_node.pointer_entries if x is not None]
         [pointers_list.append(x) for x in right_node.pointer_entries if x is not None]
         partition = len(records_list) // 2
 
-        for i in range(partition):
-            left_node.metadata_entries[i] = records_list[i]
+        for j in range(partition):
+            left_node.metadata_entries[j] = records_list[j]
             left_node.keys_count += 1
-        for i in range(partition + 1, len(records_list)):
-            right_node.metadata_entries[i - partition - 1] = records_list[i]
+        for j in range(partition + 1, len(records_list)):
+            right_node.metadata_entries[j - partition - 1] = records_list[j]
             right_node.keys_count += 1
 
         parent.metadata_entries[i] = records_list[partition]
         if left_node.is_leaf is not True:
-            for i in range(partition + 1):
-                left_node.pointer_entries[i] = pointers_list[i]
-            for i in range(partition + 1, len(pointers_list)):
-                right_node.pointer_entries[i - partition - 1] = pointers_list[i]
+            for j in range(partition + 1):
+                left_node.pointer_entries[j] = pointers_list[j]
+            for j in range(partition + 1, len(pointers_list)):
+                right_node.pointer_entries[j - partition - 1] = pointers_list[j]
 
     def add_record(self, index, a_probability, b_probability, sum_probability, recurrency_depth):
         if recurrency_depth == 0:
@@ -97,21 +100,24 @@ class BTree:
                 self._index_file.load_page(self._index_file.loaded_page.pointer_entries[i].file_position)
                 ison = self._index_file.loaded_page
 
+                compensation_done = False
                 if ison.keys_count == 2 * self._d:
                     # Left compensation
-                    compensation_done = False
-                    if i > 0:
+                    if i > 0 and ison.is_leaf is True:
                         self._index_file.load_page(old_parent.pointer_entries[i - 1].file_position)
                         left_sibling = self._index_file.loaded_page
                         if self._index_file.loaded_page.keys_count < 2 * self._d:
-                            self.compensate(left_sibling, ison, old_parent, i - 1)
+                            page_number = self._record_file.add_record(index, a_probability, b_probability, sum_probability)
+                            self.compensate(left_sibling, ison, old_parent, i - 1, IndexFilePageRecordEntry(index, page_number))
                             compensation_done = True
                     # Right compensation
-                    if compensation_done is False and i < old_parent.keys_count - 1:
-                        self._index_file.load_page(self._index_file.loaded_page.pointer_entries[i + 1])
+                    if compensation_done is False and ison.is_leaf is True and i < old_parent.keys_count - 1:
+                        self._index_file.load_page(old_parent.pointer_entries[i + 1].file_position)
                         right_sibling = self._index_file.loaded_page
                         if self._index_file.loaded_page.keys_count < 2 * self._d:
-                            self.compensate(ison, right_sibling, old_parent, i)
+                            page_number = self._record_file.add_record(index, a_probability, b_probability,
+                                                                       sum_probability)
+                            self.compensate(ison, right_sibling, old_parent, i, IndexFilePageRecordEntry(index, page_number))
                             self._index_file.loaded_page = right_sibling
                             compensation_done = True
                     # Compensation impossible
@@ -120,11 +126,12 @@ class BTree:
                         self.split_child(i, ison)
                         if index > old_parent.metadata_entries[i].index:
                             i += 1
-                self._index_file.save_page()
-                self._index_file.loaded_page = ison
-                self._index_file.save_page()
+                    self._index_file.save_page()
+                    self._index_file.loaded_page = ison
+                    self._index_file.save_page()
                 self._index_file.loaded_page = old_parent
-
+                if compensation_done is True:
+                    return
                 self._index_file.load_page(self._index_file.loaded_page.pointer_entries[i].file_position)
 
                 self.add_record(index, a_probability, b_probability, sum_probability, recurrency_depth + 1)
