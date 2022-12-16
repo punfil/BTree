@@ -423,8 +423,8 @@ class BTree:
                 ison = self._index_file.loaded_page
                 if ison.keys_count < self._d:
                     self._index_file.loaded_page = parent
-                    self.fill_the_child(index)
-                if flag and index > parent.keys_count:
+                    self.fill_the_child(i)
+                if flag and i > parent.keys_count:
                     self._index_file.load_page(parent.pointer_entries[i - 1].file_position)
                 self.delete_record(index, recurrency_depth + 1)
                 self._index_file.save_page()

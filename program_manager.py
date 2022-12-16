@@ -172,7 +172,7 @@ class ProgramManager:
                     self._btree.print_tree()
                 elif cmd == ProgramCommand.FILE_DELETE:
                     print(f"DELETE {int(line_arr[1])}")
-                    self._btree.delete_record(line_arr[1])
+                    self._btree.delete_record(int(line_arr[1]), 0)
 
     def validate(self):
         cnt = int(input("How many records to test?"))
