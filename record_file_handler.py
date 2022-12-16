@@ -1,7 +1,7 @@
+import random
 import struct
 import sys
 from os import path
-import random
 from sys import maxsize
 
 from contants import Constants

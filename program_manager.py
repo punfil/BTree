@@ -1,8 +1,8 @@
-import random
 import os
+import random
 
-from contants import Constants
 from btree import BTree
+from contants import Constants
 from validator import Validator
 
 
@@ -85,7 +85,7 @@ class ProgramManager:
         input_string = input("Please enter the record you would like to add in a format:\nKEY P(A) P(B) P(AUB) I.E. "
                              "INT FLOAT FLOAT FLOAT\n")
         numbers = input_string.split(" ")
-        assert(len(numbers) == 1)  # assert (len(numbers) == 4)
+        assert (len(numbers) == 1)  # assert (len(numbers) == 4)
         try:
             index = int(numbers[0])
             a_probability = random.random()  # float(numbers[1])
@@ -125,7 +125,7 @@ class ProgramManager:
         except ValueError:
             print("Invalid index of record!\n")
             return
-        self._btree.delete_record(index)
+        self._btree.delete_record(index, 0)
 
     def update_record_command(self):
         old_index = input("Please enter the old index of the record.\n")
@@ -179,5 +179,3 @@ class ProgramManager:
         self._btree = BTree(self._d)
         self._validator.add_x_records(cnt)
         self.load_command(Constants.VALIDATOR_FILENAME)
-
-

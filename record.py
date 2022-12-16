@@ -6,7 +6,7 @@ class Record:
         self._sum_probability = sum_probability
 
     def serialize(self):
-        #return "[" + str(self._index) + " " + str(+self._a_probability) + " " + str(self._b_probability) + " " \
+        # return "[" + str(self._index) + " " + str(+self._a_probability) + " " + str(self._b_probability) + " " \
         #    + str(self._sum_probability) + "]"
         return "[" + str(self._index) + "]"
 

@@ -131,8 +131,8 @@ class IndexFileHandler:
 
 class IndexFilePage:
     def __init__(self, page_size, page_number, is_leaf):
-        self._metadata_entries = [None for _ in range(page_size)]
-        self._pointer_entries = [None for _ in range(page_size+1)]
+        self._metadata_entries: [IndexFilePageRecordEntry] = [None for _ in range(page_size)]
+        self._pointer_entries: [IndexFilePageAddressEntry] = [None for _ in range(page_size + 1)]
         self._page_size = page_size
         self._page_number = page_number
         self._keys_count = 0
@@ -186,7 +186,8 @@ class IndexFilePage:
         self.fill()
 
     def remove_metadata_entry_between(self, index):
-        entry = next((list_entry for list_entry in self._metadata_entries if list_entry is not None and list_entry.index == index), None)
+        entry = next((list_entry for list_entry in self._metadata_entries if
+                      list_entry is not None and list_entry.index == index), None)
         try:
             assert (entry is not None)
         except AssertionError:
@@ -196,12 +197,14 @@ class IndexFilePage:
     def remove_pointer_entry_between(self, index):
         list_index = max(0,
                          next(
-                             (idx for idx, list_entry in enumerate(self._metadata_entries) if list_entry is not None and index < list_entry.index),
+                             (idx for idx, list_entry in enumerate(self._metadata_entries) if
+                              list_entry is not None and index < list_entry.index),
                              len(self._metadata_entries)) - 2)
         self._pointer_entries.pop(list_index)
 
     def get_records_page_number(self, index):
-        return next((entry.page_number for entry in self._metadata_entries if entry is not None and entry.index == index), None)
+        return next(
+            (entry.page_number for entry in self._metadata_entries if entry is not None and entry.index == index), None)
 
     def get_number_of_metadata_entries(self):
         return self._page_size - self._metadata_entries.count(None)

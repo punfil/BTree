@@ -1,6 +1,5 @@
 from index_file_handler import *
 from record_file_handler import RecordFileHandler
-from itertools import zip_longest
 
 
 class BTree:
@@ -45,10 +44,10 @@ class BTree:
                 right_node.pointer_entries[j - partition - 1] = pointers_list[j]
 
     def add_record(self, index, a_probability, b_probability, sum_probability, recurrency_depth):
-        if recurrency_depth == 0: # This means add_record is called on root
+        if recurrency_depth == 0:  # This means add_record is called on root
             self._index_file.clear_io_operations_counters()
             self._record_file.clear_io_operations_counters()
-            if self.read_record(index) is not None: # Such record already exists
+            if self.read_record(index) is not None:  # Such record already exists
                 ireads, iwrites = self._index_file.get_io_operations()
                 rreads, rwrites = self._index_file.get_io_operations()
                 print("Such record already exists!")
@@ -113,9 +112,11 @@ class BTree:
                         left_sibling = self._index_file.loaded_page
                         if self._index_file.loaded_page.keys_count < 2 * self._d:
                             # There's place in the left sibling. We can compensate
-                            page_number = self._record_file.add_record(index, a_probability, b_probability, sum_probability)
-                            self.compensate(left_sibling, ison, old_parent, i - 1, IndexFilePageRecordEntry(index, page_number))
-                            compensation_done = True # Record has been added.
+                            page_number = self._record_file.add_record(index, a_probability, b_probability,
+                                                                       sum_probability)
+                            self.compensate(left_sibling, ison, old_parent, i - 1,
+                                            IndexFilePageRecordEntry(index, page_number))
+                            compensation_done = True  # Record has been added.
                     # Try right compensation if left has not been done.
                     if compensation_done is False and ison.is_leaf is True and i < old_parent.keys_count - 1:
                         self._index_file.load_page(old_parent.pointer_entries[i + 1].file_position)
@@ -124,29 +125,30 @@ class BTree:
                             # There's place in the right sibling. We can compesante.
                             page_number = self._record_file.add_record(index, a_probability, b_probability,
                                                                        sum_probability)
-                            self.compensate(ison, right_sibling, old_parent, i, IndexFilePageRecordEntry(index, page_number))
+                            self.compensate(ison, right_sibling, old_parent, i,
+                                            IndexFilePageRecordEntry(index, page_number))
                             self._index_file.loaded_page = right_sibling
-                            compensation_done = True # Record has been added.
+                            compensation_done = True  # Record has been added.
                     # Compensation impossible. We need to split the sons[i] node.
                     if compensation_done is False:
                         self._index_file.loaded_page = old_parent
                         self.split_child(i, ison)
                         if index > old_parent.metadata_entries[i].index:
                             i += 1
-                    self._index_file.save_page() # Save the new sibling after operation
+                    self._index_file.save_page()  # Save the new sibling after operation
                     self._index_file.loaded_page = ison
-                    self._index_file.save_page() # Save the sons[i] after operation
+                    self._index_file.save_page()  # Save the sons[i] after operation
                 # It will be saved in a recurrent call
                 # or if it's root it's not required
                 self._index_file.loaded_page = old_parent
                 if compensation_done is True:
-                    return # Record added, not further action required
+                    return  # Record added, not further action required
                 # Load the new sons[i] after split and try to do the same.
                 self._index_file.load_page(self._index_file.loaded_page.pointer_entries[i].file_position)
                 self.add_record(index, a_probability, b_probability, sum_probability, recurrency_depth + 1)
                 self._index_file.save_page()
                 self._index_file.loaded_page = old_parent
-        if recurrency_depth == 0: # If we are back in root after recurrent calls we can print stats.
+        if recurrency_depth == 0:  # If we are back in root after recurrent calls we can print stats.
             ireads, iwrites = self._index_file.get_io_operations()
             rreads, rwrites = self._index_file.get_io_operations()
             self.print_io_operations(ireads + rreads, iwrites + rwrites)
@@ -186,7 +188,7 @@ class BTree:
         self._index_file.save_page()
         self._index_file.loaded_page = new_root
 
-    def read_record(self, index, check_io = False):
+    def read_record(self, index, check_io=False):
         if self._index_file.get_page_stack_size() == 0 and check_io:
             self._index_file.clear_io_operations_counters()
             self._record_file.clear_io_operations_counters()
@@ -199,7 +201,8 @@ class BTree:
             i -= 1
         if self._index_file.loaded_page.metadata_entries[i].index == index:
             returning = self._record_file.get_record_by_index(self._index_file.loaded_page.metadata_entries[i].index,
-                                                         self._index_file.loaded_page.metadata_entries[i].page_number)
+                                                              self._index_file.loaded_page.metadata_entries[
+                                                                  i].page_number)
         elif self._index_file.loaded_page.is_leaf is False:
             self._index_file.save_page()
             self._index_file.put_current_page_on_page_stack()
@@ -249,8 +252,182 @@ class BTree:
             rreads, rwrites = self._record_file.get_io_operations()
             self.print_io_operations(ireads + rreads, iwrites + rwrites)
 
-    def delete_record(self, index):
-        pass
+    @staticmethod
+    def greater_or_equal(index, node: IndexFilePage):
+        i = 0
+        while i < node.keys_count and node.metadata_entries[i].index < index:
+            i += 1
+        return i
+
+    def remove_from_leaf(self, index):
+        # Run this method with page loaded on stack
+        node = self._index_file.loaded_page
+        for i in range(index + 1, node.keys_count):
+            node.metadata_entries[i - 1] = node.metadata_entries[i]
+        node.keys_count -= 1
+
+    def remove_from_non_leaf(self, index, recurrency_depth):
+        # Run this method with page loaded on stack
+        node = self._index_file.loaded_page
+        number = node.metadata_entries[index]
+
+        self._index_file.load_page(node.pointer_entries[index].file_position)
+        ison = self._index_file.loaded_page
+        self._index_file.load_page(node.pointer_entries[index + 1].file_position)
+        i1son = self._index_file.loaded_page
+        if ison.keys_count >= self._d:
+            current = ison
+            while not current.is_leaf:
+                self._index_file.load_page(current.pointer_entries[current.keys_count].file_position)
+                current = self._index_file.loaded_page
+            predecessor = current.metadata_entries[current.keys_count - 1]
+            node.metadata_entries[index] = predecessor
+            self._index_file.loaded_page = ison
+            self.delete_record(predecessor.index, recurrency_depth + 1)  # Fix this
+            self._index_file.save_page()
+            self._index_file.loaded_page = node
+            self._index_file.save_page()
+        elif i1son.keys_count >= self._d:
+            current = i1son
+            while not current.is_leaf:
+                self._index_file.load_page(current.pointer_entries[0].file_position)
+                current = self._index_file.loaded_page
+            successor = current.metadata_entries[0]
+            node.metadata_entries[index] = successor
+            self._index_file.loaded_page = ison
+            self.delete_record(successor.index, recurrency_depth + 1)
+            self._index_file.save_page()
+            self._index_file.loaded_page = node
+            self._index_file.save_page()
+        else:
+            self._index_file.loaded_page = node
+            self.merge_keys(index)
+            self._index_file.save_page()
+            self._index_file.loaded_page = ison
+            self.delete_record(index, recurrency_depth + 1)
+            self._index_file.save_page()
+            self._index_file.loaded_page = node
+            self._index_file.save_page()
+
+    def merge_keys(self, index):
+        # Run this method with page loaded on stack
+        node = self._index_file.loaded_page
+        self._index_file.load_page(node.pointer_entries[index])
+        child = self._index_file.loaded_page
+        self._index_file.load_page(node.pointer_entries[index + 1])
+        sibling = self._index_file.loaded_page
+        for i in range(sibling.keys_count):
+            child.metadata_entries[i + self._d] = sibling.metadata_entries[i]
+        if not child.is_leaf:
+            for i in range(sibling.keys_count + 1):
+                child.pointer_entries[i + self._d] = sibling.pointer_entries[i]
+        for i in range(index + 1, node.keys_count):
+            node.metadata_entries[i - 1] = node.metadata_entries[i]
+        for i in range(index + 2, node.keys_count + 1):
+            node.pointer_entries[i - 1] = node.pointer_entries[i]
+        child.keys_count += sibling.keys_count
+        node.keys_count -= 1
+        sibling.keys_count = 0  # Delete
+        self._index_file.save_page()
+        self._index_file.loaded_page = child
+        self._index_file.save_page()
+        self._index_file.loaded_page = node
+
+    def fill_the_child(self, index):
+        # Run this method with page loaded on stack
+        node = self._index_file.loaded_page
+        self._index_file.load_page(node.pointer_entries[index - 1].file_position)
+        ison_prev = self._index_file.loaded_page
+        self._index_file.load_page(node.pointer_entries[index + 1].file_positon)
+        ison_next = self._index_file.loaded_page
+        self._index_file.load_page(node.pointer_entries[index].file_position)
+        ison = self._index_file.loaded_page
+        self._index_file.loaded_page = node
+        if index != 0 and ison_prev.keys_count >= self._d:
+            self.borrow_from_previous(index, node, ison, ison_next)
+        elif index != node.keys_count and ison_next.keys_count >= self._d:
+            self.borrow_from_next(index, node, ison, ison_prev)
+        else:
+            if index != node.keys_count:
+                self.merge_keys(index)
+            else:
+                self.merge_keys(index - 1)
+        self._index_file.loaded_page = ison_prev
+        self._index_file.save_page()
+        self._index_file.loaded_page = ison
+        self._index_file.save_page()
+        self._index_file.loaded_page = ison_next
+        self._index_file.save_page()
+        self._index_file = node
+        self._index_file.save_page()
+
+    @staticmethod
+    def borrow_from_previous(index, parent, child, sibling):
+        for i in range(child.keys_count - 1, -1, -1):
+            child.metadata_entries[i + 1] = child.metadata_entries[i]
+        if not child.is_leaf:
+            for i in range(child.keys_count, -1, -1):
+                child.pointer_entries[i + 1] = child.pointer_entries[i]
+        child.metadata_entries[0] = parent.metadata_entries[index - 1]
+        if not child.is_leaf:
+            child.pointer_entries[0] = sibling.pointer_entries[sibling.keys_count]
+        parent.metadata_entries[index - 1] = sibling.metadata_entries[sibling.keys_count - 1]
+        child.keys_count += 1
+        sibling.keys_count -= 1
+
+    @staticmethod
+    def borrow_from_next(index, parent, child, sibling):
+        child.metadata_entries[child.keys_count] = parent.metadata_entries[index]
+        if not child.is_leaf:
+            child.pointer_entries[child.keys_count + 1] = sibling.pointer_entries[0]
+        parent.metadata_entries[index] = sibling.metadata_entries[0]
+        for i in range(1, sibling.keys_count):
+            sibling.metadata_entries[i - 1] = sibling.metadata_entries[i]
+        if not sibling.keys_count:
+            for i in range(1, sibling.keys_count + 1):
+                sibling.pointer_entries[i - 1] = sibling.pointer_entries[i]
+        child.keys_count += 1
+        sibling.keys_count -= 1
+
+    def delete_record(self, index, recurrency_depth):
+        if recurrency_depth == 0:
+            # We are on root node
+            self._index_file.clear_io_operations_counters()
+            self._record_file.clear_io_operations_counters()
+            # Check if such record exists is not required as it's checked later anyways
+        else:
+            # Perform removal in node
+            i = self.greater_or_equal(index, self._index_file.loaded_page)
+            if i < self.keys_count and self._index_file.loaded_page.metadata_entries[i].index == index:
+                if self._index_file.loaded_page.is_leaf:
+                    self.remove_from_leaf(i)
+                else:
+                    self.remove_from_non_leaf(i, recurrency_depth)
+            else:
+                if self._index_file.loaded_page.is_leaf:
+                    # Such record doesn't exist!
+                    return
+                flag = False
+                if self._index_file.loaded_page.keys_count == i:
+                    flag = True
+
+                parent = self._index_file.loaded_page
+                self._index_file.load_page(parent.pointer_entries[i].file_position)
+                ison = self._index_file.loaded_page
+                if ison.keys_count < self._d:
+                    self._index_file.loaded_page = parent
+                    self.fill_the_child(index)
+                if flag and index > parent.keys_count:
+                    self._index_file.load_page(parent.pointer_entries[i - 1].file_position)
+                self.delete_record(index, recurrency_depth + 1)
+                self._index_file.save_page()
+                self._index_file.loaded_page = parent
+
+        if recurrency_depth == 0 and self._index_file.loaded_page.keys_count == 0 and self._index_file.loaded_page.is_leaf is False:
+            # We are on root node again. Check if all records from root has been removed.
+            # self._index_file.loaded_page = self._index_file.load_page(self._index_file.loaded_page.pointer_entries[
+            # 0].file_position)
+            pass
 
     def update_record(self, old_index, index, a_probability, b_probability, sum_probability):
         if self.read_record(index) is None:
