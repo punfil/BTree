@@ -50,6 +50,7 @@ class BTree:
             if self.read_record(index) is not None:
                 ireads, iwrites = self._index_file.get_io_operations()
                 rreads, rwrites = self._index_file.get_io_operations()
+                print("Such record already exists!")
                 self.print_io_operations(ireads + rreads, iwrites + rwrites)
                 return
 
@@ -177,8 +178,8 @@ class BTree:
         self._index_file.save_page()
         self._index_file.loaded_page = new_root
 
-    def read_record(self, index):
-        if self._index_file.get_page_stack_size() == 0:
+    def read_record(self, index, check_io = False):
+        if self._index_file.get_page_stack_size() == 0 and check_io:
             self._index_file.clear_io_operations_counters()
             self._record_file.clear_io_operations_counters()
 
@@ -189,7 +190,7 @@ class BTree:
         while i > 0 and index < self._index_file.loaded_page.metadata_entries[i].index:
             i -= 1
         if self._index_file.loaded_page.metadata_entries[i].index == index:
-            return self._record_file.get_record_by_index(self._index_file.loaded_page.metadata_entries[i].index,
+            returning = self._record_file.get_record_by_index(self._index_file.loaded_page.metadata_entries[i].index,
                                                          self._index_file.loaded_page.metadata_entries[i].page_number)
         elif self._index_file.loaded_page.is_leaf is False:
             self._index_file.save_page()
@@ -201,16 +202,14 @@ class BTree:
             record = self.read_record(index)
             self._index_file.pop_last_page_stack()
 
-            ireads, iwrites = self._index_file.get_io_operations()
-            rreads, rwrites = self._index_file.get_io_operations()
-            self.print_io_operations(ireads + rreads, iwrites + rwrites)
-
-            return record
+            returning = record
         else:
+            returning = None
+        if check_io:
             ireads, iwrites = self._index_file.get_io_operations()
             rreads, rwrites = self._index_file.get_io_operations()
             self.print_io_operations(ireads + rreads, iwrites + rwrites)
-            return None
+        return returning
 
     def print_tree(self):
         if self._index_file.get_page_stack_size() == 0:

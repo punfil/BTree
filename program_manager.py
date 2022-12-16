@@ -109,7 +109,7 @@ class ProgramManager:
         except ValueError:
             print("Invalid index of record!\n")
             return
-        record = self._btree.read_record(index)
+        record = self._btree.read_record(index, True)
         if record is not None:
             print(record.serialize())
         else:
