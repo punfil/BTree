@@ -275,7 +275,7 @@ class BTree:
         ison = self._index_file.loaded_page
         self._index_file.load_page(node.pointer_entries[index + 1].file_position)
         i1son = self._index_file.loaded_page
-        if ison.keys_count >= self._d:
+        if ison.keys_count >= self._d: # Edit ?
             current = ison
             while not current.is_leaf:
                 self._index_file.load_page(current.pointer_entries[current.keys_count].file_position)
@@ -287,7 +287,7 @@ class BTree:
             self._index_file.save_page()
             self._index_file.loaded_page = node
             self._index_file.save_page()
-        elif i1son.keys_count >= self._d:
+        elif i1son.keys_count >= self._d: #Edit ?
             current = i1son
             while not current.is_leaf:
                 self._index_file.load_page(current.pointer_entries[0].file_position)
@@ -312,9 +312,9 @@ class BTree:
     def merge_keys(self, index):
         # Run this method with page loaded on stack
         node = self._index_file.loaded_page
-        self._index_file.load_page(node.pointer_entries[index])
+        self._index_file.load_page(node.pointer_entries[index].file_position)
         child = self._index_file.loaded_page
-        self._index_file.load_page(node.pointer_entries[index + 1])
+        self._index_file.load_page(node.pointer_entries[index + 1].file_position)
         sibling = self._index_file.loaded_page
         for i in range(sibling.keys_count):
             child.metadata_entries[i + self._d] = sibling.metadata_entries[i]
@@ -325,7 +325,7 @@ class BTree:
             node.metadata_entries[i - 1] = node.metadata_entries[i]
         for i in range(index + 2, node.keys_count + 1):
             node.pointer_entries[i - 1] = node.pointer_entries[i]
-        child.keys_count += sibling.keys_count
+        child.keys_count += sibling.keys_count + 1
         node.keys_count -= 1
         sibling.keys_count = 0  # Delete
         self._index_file.save_page()
@@ -336,29 +336,37 @@ class BTree:
     def fill_the_child(self, index):
         # Run this method with page loaded on stack
         node = self._index_file.loaded_page
-        self._index_file.load_page(node.pointer_entries[index - 1].file_position)
-        ison_prev = self._index_file.loaded_page
-        self._index_file.load_page(node.pointer_entries[index + 1].file_positon)
-        ison_next = self._index_file.loaded_page
         self._index_file.load_page(node.pointer_entries[index].file_position)
         ison = self._index_file.loaded_page
         self._index_file.loaded_page = node
-        if index != 0 and ison_prev.keys_count >= self._d:
-            self.borrow_from_previous(index, node, ison, ison_next)
-        elif index != node.keys_count and ison_next.keys_count >= self._d:
-            self.borrow_from_next(index, node, ison, ison_prev)
-        else:
-            if index != node.keys_count:
-                self.merge_keys(index)
-            else:
-                self.merge_keys(index - 1)
-        self._index_file.loaded_page = ison_prev
-        self._index_file.save_page()
+        done = False
+        if index != 0:
+            self._index_file.load_page(node.pointer_entries[index - 1].file_position)
+            ison_prev = self._index_file.loaded_page
+            self._index_file.loaded_page = node
+            if ison_prev.keys_count >= self._d:
+                self.borrow_from_previous(index, node, ison, ison_prev)
+                self._index_file.loaded_page = ison_prev
+                self._index_file.save_page()
+                self._index_file.loaded_page = node
+                done = True
+        if index != node.keys_count and not done:
+            self._index_file.load_page(node.pointer_entries[index + 1].file_position)
+            ison_next = self._index_file.loaded_page
+            self._index_file.loaded_page = node
+            if ison_next.keys_count >= self._d:
+                self.borrow_from_next(index, node, ison, ison_next)
+                self._index_file.loaded_page = ison_next
+                self._index_file.save_page()
+                self._index_file.loaded_page = node
+                done = True
+        if index != node.keys_count and not done:
+            self.merge_keys(index)
+        elif not done:
+            self.merge_keys(index - 1)
         self._index_file.loaded_page = ison
         self._index_file.save_page()
-        self._index_file.loaded_page = ison_next
-        self._index_file.save_page()
-        self._index_file = node
+        self._index_file.loaded_page = node
         self._index_file.save_page()
 
     @staticmethod
@@ -398,7 +406,7 @@ class BTree:
             self.delete_record(index, recurrency_depth + 1)
             if self._index_file.loaded_page.keys_count == 0 and not self._index_file.loaded_page.is_leaf:
                 parent = self._index_file.loaded_page
-                self._index_file.load_page(self._index_file.loaded_page.pointer_entries[0].file_positon)
+                self._index_file.load_page(self._index_file.loaded_page.pointer_entries[0].file_position)
                 ison = self._index_file.loaded_page
                 ison.page_number = parent.page_number
                 self._index_file.save_page()
@@ -413,6 +421,7 @@ class BTree:
             else:
                 if self._index_file.loaded_page.is_leaf:
                     # Such record doesn't exist!
+                    print("Record requested to be deleted doesn't exist!")
                     return
                 flag = False
                 if self._index_file.loaded_page.keys_count == i:
@@ -421,7 +430,7 @@ class BTree:
                 parent = self._index_file.loaded_page
                 self._index_file.load_page(parent.pointer_entries[i].file_position)
                 ison = self._index_file.loaded_page
-                if ison.keys_count < self._d:
+                if ison.keys_count < self._d: # Edit ?
                     self._index_file.loaded_page = parent
                     self.fill_the_child(i)
                 if flag and i > parent.keys_count:
@@ -432,7 +441,7 @@ class BTree:
 
     def update_record(self, old_index, index, a_probability, b_probability, sum_probability):
         if self.read_record(index) is None:
-            self.delete_record(old_index)
-            self.add_record(index, a_probability, b_probability, sum_probability)
+            self.delete_record(old_index, 0)
+            self.add_record(index, a_probability, b_probability, sum_probability, 0)
         else:
             print("Record with given new index already exists!")
