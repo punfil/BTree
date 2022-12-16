@@ -294,6 +294,7 @@ class BTree:
                 current = self._index_file.loaded_page
             successor = current.metadata_entries[0]
             node.metadata_entries[index] = successor
+            self._index_file.loaded_page = i1son
             self.delete_record(successor.index, recurrency_depth + 1)
             self._index_file.save_page()
             self._index_file.loaded_page = ison
@@ -357,7 +358,6 @@ class BTree:
             self._index_file.load_page(node.pointer_entries[index + 1].file_position)
             ison_next = self._index_file.loaded_page
             self._index_file.loaded_page = node
-            self._index_file.save_page()
             if ison_next.keys_count >= self._d:
                 self.borrow_from_next(index, node, ison, ison_next)
                 self._index_file.loaded_page = ison_next
@@ -394,7 +394,7 @@ class BTree:
         parent.metadata_entries[index] = sibling.metadata_entries[0]
         for i in range(1, sibling.keys_count):
             sibling.metadata_entries[i - 1] = sibling.metadata_entries[i]
-        if not sibling.keys_count:
+        if not sibling.is_leaf:
             for i in range(1, sibling.keys_count + 1):
                 sibling.pointer_entries[i - 1] = sibling.pointer_entries[i]
         child.keys_count += 1
