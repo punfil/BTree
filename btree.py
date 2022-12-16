@@ -269,7 +269,7 @@ class BTree:
     def remove_from_non_leaf(self, index, recurrency_depth):
         # Run this method with page loaded on stack
         node = self._index_file.loaded_page
-        number = node.metadata_entries[index]
+        number = node.metadata_entries[index].index
 
         self._index_file.load_page(node.pointer_entries[index].file_position)
         ison = self._index_file.loaded_page
@@ -294,17 +294,18 @@ class BTree:
                 current = self._index_file.loaded_page
             successor = current.metadata_entries[0]
             node.metadata_entries[index] = successor
-            self._index_file.loaded_page = ison
             self.delete_record(successor.index, recurrency_depth + 1)
+            self._index_file.save_page()
+            self._index_file.loaded_page = ison
             self._index_file.save_page()
             self._index_file.loaded_page = node
             self._index_file.save_page()
         else:
             self._index_file.loaded_page = node
-            self.merge_keys(index)
+            ison = self.merge_keys(index)
             self._index_file.save_page()
             self._index_file.loaded_page = ison
-            self.delete_record(index, recurrency_depth + 1)
+            self.delete_record(number, recurrency_depth + 1)
             self._index_file.save_page()
             self._index_file.loaded_page = node
             self._index_file.save_page()
@@ -316,6 +317,7 @@ class BTree:
         child = self._index_file.loaded_page
         self._index_file.load_page(node.pointer_entries[index + 1].file_position)
         sibling = self._index_file.loaded_page
+        child.metadata_entries[self._d-1] = node.metadata_entries[index]
         for i in range(sibling.keys_count):
             child.metadata_entries[i + self._d] = sibling.metadata_entries[i]
         if not child.is_leaf:
@@ -332,6 +334,7 @@ class BTree:
         self._index_file.loaded_page = child
         self._index_file.save_page()
         self._index_file.loaded_page = node
+        return child
 
     def fill_the_child(self, index):
         # Run this method with page loaded on stack
@@ -354,19 +357,19 @@ class BTree:
             self._index_file.load_page(node.pointer_entries[index + 1].file_position)
             ison_next = self._index_file.loaded_page
             self._index_file.loaded_page = node
+            self._index_file.save_page()
             if ison_next.keys_count >= self._d:
                 self.borrow_from_next(index, node, ison, ison_next)
                 self._index_file.loaded_page = ison_next
                 self._index_file.save_page()
                 self._index_file.loaded_page = node
+                self._index_file.save_page()
                 done = True
         if index != node.keys_count and not done:
-            self.merge_keys(index)
+            ison = self.merge_keys(index)
         elif not done:
-            self.merge_keys(index - 1)
+            ison = self.merge_keys(index - 1)
         self._index_file.loaded_page = ison
-        self._index_file.save_page()
-        self._index_file.loaded_page = node
         self._index_file.save_page()
 
     @staticmethod
