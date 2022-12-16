@@ -394,11 +394,18 @@ class BTree:
             # We are on root node
             self._index_file.clear_io_operations_counters()
             self._record_file.clear_io_operations_counters()
-            # Check if such record exists is not required as it's checked later anyways
+            # Check if such record exists is not required as it's checked later anyway
+            self.delete_record(index, recurrency_depth + 1)
+            if self._index_file.loaded_page.keys_count == 0 and not self._index_file.loaded_page.is_leaf:
+                parent = self._index_file.loaded_page
+                self._index_file.load_page(self._index_file.loaded_page.pointer_entries[0].file_positon)
+                ison = self._index_file.loaded_page
+                ison.page_number = parent.page_number
+                self._index_file.save_page()
         else:
             # Perform removal in node
             i = self.greater_or_equal(index, self._index_file.loaded_page)
-            if i < self.keys_count and self._index_file.loaded_page.metadata_entries[i].index == index:
+            if i < self._index_file.loaded_page.keys_count and self._index_file.loaded_page.metadata_entries[i].index == index:
                 if self._index_file.loaded_page.is_leaf:
                     self.remove_from_leaf(i)
                 else:
@@ -422,12 +429,6 @@ class BTree:
                 self.delete_record(index, recurrency_depth + 1)
                 self._index_file.save_page()
                 self._index_file.loaded_page = parent
-
-        if recurrency_depth == 0 and self._index_file.loaded_page.keys_count == 0 and self._index_file.loaded_page.is_leaf is False:
-            # We are on root node again. Check if all records from root has been removed.
-            # self._index_file.loaded_page = self._index_file.load_page(self._index_file.loaded_page.pointer_entries[
-            # 0].file_position)
-            pass
 
     def update_record(self, old_index, index, a_probability, b_probability, sum_probability):
         if self.read_record(index) is None:
