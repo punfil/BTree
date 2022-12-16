@@ -14,7 +14,8 @@ class BTree:
     def print_io_operations(reads, writes):
         print(f"During operation reads: {reads} writes: {writes}")
 
-    def compensate(self, left_node, right_node, parent, i, new_record):
+    @staticmethod
+    def compensate(left_node, right_node, parent, i, new_record):
         # Only for leafs
         left_node.keys_count = 0
         right_node.keys_count = 0
@@ -44,28 +45,27 @@ class BTree:
                 right_node.pointer_entries[j - partition - 1] = pointers_list[j]
 
     def add_record(self, index, a_probability, b_probability, sum_probability, recurrency_depth):
-        if recurrency_depth == 0:
+        if recurrency_depth == 0: # This means add_record is called on root
             self._index_file.clear_io_operations_counters()
             self._record_file.clear_io_operations_counters()
-            if self.read_record(index) is not None:
+            if self.read_record(index) is not None: # Such record already exists
                 ireads, iwrites = self._index_file.get_io_operations()
                 rreads, rwrites = self._index_file.get_io_operations()
                 print("Such record already exists!")
                 self.print_io_operations(ireads + rreads, iwrites + rwrites)
                 return
 
+        # If we are on root we need to split it.
         if recurrency_depth == 0 and self._index_file.loaded_page.keys_count == 2 * self._d:
-            # From btree.cpp
             current_page = self._index_file.loaded_page
-
+            # Add new page for first son of the root
             self._index_file.add_new_page(is_leaf=False)
             son_page = self._index_file.loaded_page
 
-            # They will be switched places anyway, that's why son_page.page_number not current_page
+            # They will be switched places anyway, that's why son_page.page_number not current_page 2 commands below
             son_page.pointer_entries[0] = IndexFilePageAddressEntry(son_page.page_number)
-
+            # Perform split child
             self.split_child(0, current_page)
-
             # Switch places in real file
             current_page.page_number, son_page.page_number = son_page.page_number, current_page.page_number
             # Save new parent page after split_child
@@ -75,78 +75,86 @@ class BTree:
             self._index_file.save_page()
             # Emulation of recursive execution on the new son
             self._index_file.loaded_page = son_page
-
             self.add_record(index, a_probability, b_probability, sum_probability, recurrency_depth + 1)
         else:
-            # from node.cpp
             i = self._index_file.loaded_page.keys_count - 1
             if self._index_file.loaded_page.is_leaf is True:
-
+                # If we are in leaf it's ok to add it here. We know we won't overflow, because in keys_count == 2*d
+                # scenario split would happen before entering son
                 page_number = self._record_file.add_record(index, a_probability, b_probability, sum_probability)
-
+                # Find the first number that is not greater than index
                 while i >= 0 and index < self._index_file.loaded_page.metadata_entries[i].index:
                     self._index_file.loaded_page.metadata_entries[i + 1] = \
                         self._index_file.loaded_page.metadata_entries[i]
                     i -= 1
-
+                # Add element at that index
                 self._index_file.loaded_page.metadata_entries[i + 1] = IndexFilePageRecordEntry(index, page_number)
                 self._index_file.loaded_page.keys_count += 1
+                # There is no need to save that page, because either it's root or it will be saved
+                # as it's recurrent func call.
             else:
+                # Find the first record that is not greater then index
                 while i >= 0 and self._index_file.loaded_page.metadata_entries[i].index > index:
                     i -= 1
-
+                # len(sons) = len(keys) +1 in non-leaf nodes
                 i += 1
-
+                # Load sons[i]
                 old_parent = self._index_file.loaded_page
                 self._index_file.load_page(self._index_file.loaded_page.pointer_entries[i].file_position)
                 ison = self._index_file.loaded_page
 
                 compensation_done = False
                 if ison.keys_count == 2 * self._d:
-                    # Left compensation
+                    # No place in the sons[i].
+                    # Try left compensation
                     if i > 0 and ison.is_leaf is True:
+                        # Load left sibling of sons[i]
                         self._index_file.load_page(old_parent.pointer_entries[i - 1].file_position)
                         left_sibling = self._index_file.loaded_page
                         if self._index_file.loaded_page.keys_count < 2 * self._d:
+                            # There's place in the left sibling. We can compensate
                             page_number = self._record_file.add_record(index, a_probability, b_probability, sum_probability)
                             self.compensate(left_sibling, ison, old_parent, i - 1, IndexFilePageRecordEntry(index, page_number))
-                            compensation_done = True
-                    # Right compensation
+                            compensation_done = True # Record has been added.
+                    # Try right compensation if left has not been done.
                     if compensation_done is False and ison.is_leaf is True and i < old_parent.keys_count - 1:
                         self._index_file.load_page(old_parent.pointer_entries[i + 1].file_position)
                         right_sibling = self._index_file.loaded_page
                         if self._index_file.loaded_page.keys_count < 2 * self._d:
+                            # There's place in the right sibling. We can compesante.
                             page_number = self._record_file.add_record(index, a_probability, b_probability,
                                                                        sum_probability)
                             self.compensate(ison, right_sibling, old_parent, i, IndexFilePageRecordEntry(index, page_number))
                             self._index_file.loaded_page = right_sibling
-                            compensation_done = True
-                    # Compensation impossible
+                            compensation_done = True # Record has been added.
+                    # Compensation impossible. We need to split the sons[i] node.
                     if compensation_done is False:
                         self._index_file.loaded_page = old_parent
                         self.split_child(i, ison)
                         if index > old_parent.metadata_entries[i].index:
                             i += 1
-                    self._index_file.save_page()
+                    self._index_file.save_page() # Save the new sibling after operation
                     self._index_file.loaded_page = ison
-                    self._index_file.save_page()
+                    self._index_file.save_page() # Save the sons[i] after operation
+                # It will be saved in a recurrent call
+                # or if it's root it's not required
                 self._index_file.loaded_page = old_parent
                 if compensation_done is True:
-                    return
+                    return # Record added, not further action required
+                # Load the new sons[i] after split and try to do the same.
                 self._index_file.load_page(self._index_file.loaded_page.pointer_entries[i].file_position)
-
                 self.add_record(index, a_probability, b_probability, sum_probability, recurrency_depth + 1)
                 self._index_file.save_page()
                 self._index_file.loaded_page = old_parent
-        if recurrency_depth == 0:
+        if recurrency_depth == 0: # If we are back in root after recurrent calls we can print stats.
             ireads, iwrites = self._index_file.get_io_operations()
             rreads, rwrites = self._index_file.get_io_operations()
             self.print_io_operations(ireads + rreads, iwrites + rwrites)
 
     def split_child(self, i, old_root):
-        # this should be loaded as loaded_page
-
+        # The new left son should be loaded before calling this function
         new_root = self._index_file.loaded_page
+        # Create new right sibling of the new left son
         self._index_file.add_new_page(old_root.is_leaf)
         temp = self._index_file.loaded_page
 
