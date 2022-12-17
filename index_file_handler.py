@@ -15,6 +15,7 @@ class IndexFileHandler:
         self._page_size_in_records = page_size
         self._number_of_reads = 0
         self._number_of_writes = 0
+        self._last_loaded_page_stack = []  # Max INDEX_FILE_BUFFER_SIZE
 
     def clear_io_operations_counters(self):
         self._number_of_reads = 0
@@ -29,6 +30,15 @@ class IndexFileHandler:
             assert (0 <= page_number < self._number_of_pages)
         except AssertionError:
             return
+        page = next((page for page in self._last_loaded_page_stack if page.page_number == page_number), None)
+        if page:
+            self._last_loaded_page_stack.append(self._loaded_page)
+            self._loaded_page = page
+            self._last_loaded_page_stack.remove(page)
+            return
+        if len(self._last_loaded_page_stack) >= Constants.INDEX_FILE_BUFFER_SIZE:
+            self._last_loaded_page_stack.pop(0)
+        self._last_loaded_page_stack.append(self._loaded_page)
         self._number_of_reads += 1
         self._loaded_page = IndexFilePage(self._page_size_in_records, page_number, True)
         with open(self._filename, "rb") as file:
@@ -105,6 +115,9 @@ class IndexFileHandler:
         self._loaded_page.add_metadata_entry_between(IndexFilePageRecordEntry(index, page_number))
 
     def add_new_page(self, is_leaf):
+        if len(self._last_loaded_page_stack) >= Constants.INDEX_FILE_BUFFER_SIZE:
+            self._last_loaded_page_stack.pop(0)
+        self._last_loaded_page_stack.append(self._loaded_page)
         self._loaded_page = IndexFilePage(self._page_size_in_records, self._number_of_pages, is_leaf)
         self._number_of_pages += 1
 

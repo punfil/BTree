@@ -7,3 +7,4 @@ class Constants:
     VALIDATOR_FILENAME = "tests.txt"
     LITERAL = "big"
     FILE_DELIMITER = " "
+    INDEX_FILE_BUFFER_SIZE = 2
