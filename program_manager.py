@@ -91,6 +91,7 @@ class ProgramManager:
             a_probability = random.random()  # float(numbers[1])
             b_probability = random.random()  # float(numbers[2])
             sum_probability = random.random()  # float(numbers[3])
+            assert(index >= 0)
             assert (0 <= a_probability <= 1.0)
             assert (0 <= b_probability <= 1.0)
             assert (0 <= sum_probability <= 1.0)
@@ -106,7 +107,11 @@ class ProgramManager:
         input_string = input("Please enter index of record you would like to read.\n")
         try:
             index = int(input_string)
+            assert(index >= 0)
         except ValueError:
+            print("Invalid index of record!\n")
+            return
+        except AssertionError:
             print("Invalid index of record!\n")
             return
         record = self._btree.read_record(index, True)
@@ -122,8 +127,12 @@ class ProgramManager:
         input_string = input("Please enter index of the record you would like to delete.\n")
         try:
             index = int(input_string)
+            assert(index >= 0)
         except ValueError:
             print("Invalid index of record!\n")
+            return
+        except AssertionError:
+            print("Enter index >= 0")
             return
         self._btree.delete_record(index, 0)
 
@@ -138,6 +147,8 @@ class ProgramManager:
             a_probability = float(numbers[1])
             b_probability = float(numbers[2])
             sum_probability = float(numbers[3])
+            assert(old_index >= 0)
+            assert(index >= 0)
             assert (0 <= a_probability <= 1.0)
             assert (0 <= b_probability <= 1.0)
             assert (0 <= sum_probability <= 1.0)
