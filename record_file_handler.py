@@ -61,7 +61,7 @@ class RecordFileHandler:
                 # It's the P(AUB)
                 sum_probability = binary_to_float(file.read(Constants.FLOAT_SIZE))
                 bytes_read += Constants.FLOAT_SIZE * 3
-                self._loaded_page.add_last_record(Record(index, random.random(), random.random(), random.random()))
+                self._loaded_page.add_last_record(Record(index, a_probability, b_probability, sum_probability))
 
     def save_page(self):
         with open(self._filename, "r+b") as file:

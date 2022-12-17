@@ -128,16 +128,16 @@ class ProgramManager:
         self._btree.delete_record(index, 0)
 
     def update_record_command(self):
-        old_index = input("Please enter the old index of the record.\n")
+        old_index = int(input("Please enter the old index of the record.\n"))
         input_string = input("Please enter the new data of the record you would like to update in a format:\nKEY P("
-                             "A) P(B) P(A∪B) I.E. INT FLOAT FLOAT FLOAT\n")
+                             "A) P(B) P(AUB) I.E. INT FLOAT FLOAT FLOAT\n")
         numbers = input_string.split(" ")
-        assert (len(numbers) == 4)
+        assert (len(numbers) == 1)
         try:
             index = int(numbers[0])
-            a_probability = random.random()  # float(numbers[1])
-            b_probability = random.random()  # float(numbers[2])
-            sum_probability = random.random()  # float(numbers[3])
+            a_probability = float(numbers[1])
+            b_probability = float(numbers[2])
+            sum_probability = float(numbers[3])
             assert (0 <= a_probability <= 1.0)
             assert (0 <= b_probability <= 1.0)
             assert (0 <= sum_probability <= 1.0)
