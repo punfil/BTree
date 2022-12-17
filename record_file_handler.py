@@ -104,6 +104,12 @@ class RecordFileHandler:
         assert(record is not None)  # That is not possible by design
         return record
 
+    def remove_record(self, index, page_number):
+        if not self._loaded_page.page_number == page_number:
+            self.save_page()
+            self.load_existing_page(page_number)
+        self._loaded_page.remove_record(index)
+
     def add_record(self, index, a_probability, b_probability, sum_probability):
         # Check if we can write it to the current page
         if self._loaded_page.get_number_of_records() < self._max_number_of_records:
@@ -133,6 +139,9 @@ class RecordFilePage:
 
     def add_last_record(self, record):
         self._records.append(record)
+
+    def remove_record(self, index):
+        self._records.remove(self.get_record(index))
 
     def remove_first_record(self):
         try:
