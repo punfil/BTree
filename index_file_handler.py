@@ -15,7 +15,6 @@ class IndexFileHandler:
         self._page_size_in_records = page_size
         self._number_of_reads = 0
         self._number_of_writes = 0
-        self.save_page()
 
     def clear_io_operations_counters(self):
         self._number_of_reads = 0
@@ -108,7 +107,6 @@ class IndexFileHandler:
     def add_new_page(self, is_leaf):
         self._loaded_page = IndexFilePage(self._page_size_in_records, self._number_of_pages, is_leaf)
         self._number_of_pages += 1
-        self.save_page()
 
     @property
     def loaded_page(self):

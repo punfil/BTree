@@ -203,7 +203,6 @@ class BTree:
                                                                   i].page_number)
             pg = self._index_file.loaded_page.metadata_entries[i].page_number
         elif self._index_file.loaded_page.is_leaf is False:
-            self._index_file.save_page()
             self._index_file.put_current_page_on_page_stack()
             if index < self._index_file.loaded_page.metadata_entries[i].index:
                 self._index_file.load_page(self._index_file.loaded_page.pointer_entries[i].file_position)
@@ -316,7 +315,7 @@ class BTree:
         child = self._index_file.loaded_page
         self._index_file.load_page(node.pointer_entries[index + 1].file_position)
         sibling = self._index_file.loaded_page
-        child.metadata_entries[self._d-1] = node.metadata_entries[index]
+        child.metadata_entries[self._d - 1] = node.metadata_entries[index]
         for i in range(sibling.keys_count):
             child.metadata_entries[i + self._d] = sibling.metadata_entries[i]
         if not child.is_leaf:
@@ -416,7 +415,8 @@ class BTree:
         else:
             # Perform removal in node
             i = self.greater_or_equal(index, self._index_file.loaded_page)
-            if i < self._index_file.loaded_page.keys_count and self._index_file.loaded_page.metadata_entries[i].index == index:
+            if i < self._index_file.loaded_page.keys_count and self._index_file.loaded_page.metadata_entries[
+                i].index == index:
                 if self._index_file.loaded_page.is_leaf:
                     self.remove_from_leaf(i)
                 else:
@@ -433,7 +433,7 @@ class BTree:
                 parent = self._index_file.loaded_page
                 self._index_file.load_page(parent.pointer_entries[i].file_position)
                 ison = self._index_file.loaded_page
-                if ison.keys_count < self._d: # Edit ?
+                if ison.keys_count < self._d:  # Edit ?
                     self._index_file.loaded_page = parent
                     self.fill_the_child(i)
                 if flag and i > parent.keys_count:

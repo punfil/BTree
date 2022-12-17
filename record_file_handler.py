@@ -98,13 +98,14 @@ class RecordFileHandler:
             while bytes_written < self._page_size:
                 file.write(sys.maxsize.to_bytes(Constants.FLOAT_SIZE, Constants.LITERAL))
                 bytes_written += Constants.FLOAT_SIZE
+        self._loaded_page.dirty_bit = False
 
     def get_record_by_index(self, index, page_number):
         if not self._loaded_page.page_number == page_number:
             self.save_page()
             self.load_existing_page(page_number)
         record = self._loaded_page.get_record(index)
-        assert(record is not None)  # That is not possible by design
+        assert (record is not None)  # That is not possible by design
         return record
 
     def remove_record(self, index, page_number):
