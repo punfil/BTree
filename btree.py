@@ -5,7 +5,6 @@ from record_file_handler import RecordFileHandler
 class BTree:
     def __init__(self, degree=2):
         self._d = degree
-        self._max_keys = 2 * degree
         self._index_file = IndexFileHandler(2 * degree)
         self._record_file = RecordFileHandler(2 * degree)
 

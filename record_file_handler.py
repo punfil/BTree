@@ -117,17 +117,11 @@ class RecordFilePage:
     def add_last_record(self, record):
         self._records.append(record)
 
-    def add_record_between(self, index, record):
-        self._records.insert(index, record)
-
     def remove_first_record(self):
         try:
             return self._records.pop(0)
         except IndexError:
             return None
-
-    def remove_record_between(self, index):
-        self._records.pop(index)
 
     def get_number_of_records(self):
         return len(self._records)

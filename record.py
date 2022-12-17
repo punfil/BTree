@@ -10,9 +10,6 @@ class Record:
         #    + str(self._sum_probability) + "]"
         return "[" + str(self._index) + "]"
 
-    def debug_serialize(self):
-        return str(self._index)
-
     def __gt__(self, other):
         return self._index > other.index
 

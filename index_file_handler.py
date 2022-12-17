@@ -62,16 +62,6 @@ class IndexFileHandler:
     def put_current_page_on_page_stack(self):
         self._loaded_page_stack.append(self._loaded_page)
 
-    def load_page_from_page_stack(self, index):
-        try:
-            assert (0 <= index < len(self._loaded_page_stack))
-        except AssertionError:
-            return
-        self._loaded_page = self._loaded_page_stack[index]
-
-    def empty_page_stack(self):
-        self._loaded_page_stack.clear()
-
     def pop_last_page_stack(self):
         self._loaded_page = self._loaded_page_stack.pop(-1)
 
@@ -170,47 +160,9 @@ class IndexFilePage:
         self.fill()
         self._keys_count += 1
 
-    def add_pointer_entry_between(self, entry, ptr):
-        new_pointers = []
-        new_value_written = False
-        for list_entry, pointer in zip(self._metadata_entries, self._pointer_entries):
-            if list_entry is None:
-                new_pointers.append(ptr)
-                break
-            elif entry >= list_entry and new_value_written is False:
-                new_pointers.append(ptr)
-                new_value_written = True
-            else:
-                new_pointers.append(pointer)
-        self._pointer_entries = new_pointers
-        self.fill()
-
-    def remove_metadata_entry_between(self, index):
-        entry = next((list_entry for list_entry in self._metadata_entries if
-                      list_entry is not None and list_entry.index == index), None)
-        try:
-            assert (entry is not None)
-        except AssertionError:
-            return
-        self._metadata_entries.remove(entry)
-
-    def remove_pointer_entry_between(self, index):
-        list_index = max(0,
-                         next(
-                             (idx for idx, list_entry in enumerate(self._metadata_entries) if
-                              list_entry is not None and index < list_entry.index),
-                             len(self._metadata_entries)) - 2)
-        self._pointer_entries.pop(list_index)
-
     def get_records_page_number(self, index):
         return next(
             (entry.page_number for entry in self._metadata_entries if entry is not None and entry.index == index), None)
-
-    def get_number_of_metadata_entries(self):
-        return self._page_size - self._metadata_entries.count(None)
-
-    def get_number_of_pointer_entries(self):
-        return self._page_size - self._pointer_entries.count(None) + 1
 
     @property
     def page_number(self):
