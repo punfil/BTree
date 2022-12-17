@@ -101,7 +101,9 @@ class ProgramManager:
         except ValueError:
             print("Wrong value entered!")
             return
-        self._btree.add_record(index, a_probability, b_probability, sum_probability, 0)
+        ret = self._btree.add_record(index, a_probability, b_probability, sum_probability, 0)
+        if ret is False:
+            print("Value already existed!")
 
     def read_record_command(self):
         input_string = input("Please enter index of record you would like to read.\n")
@@ -178,7 +180,9 @@ class ProgramManager:
                 if cmd == ProgramCommand.FILE_ADD:
                     print(f"INSERT {int(line_arr[1])}")
                     # self._btree.add_record(int(line_arr[1]), float(line_arr[2]), float(line_arr[3]), float(line_arr[4]), 0)
-                    self._btree.add_record(int(line_arr[1]), random.random(), random.random(), random.random(), 0)
+                    ret = self._btree.add_record(int(line_arr[1]), random.random(), random.random(), random.random(), 0)
+                    if ret is False:
+                        print("Value already existed!")
                 elif cmd == ProgramCommand.FILE_PRINT:
                     self._btree.print_tree()
                 elif cmd == ProgramCommand.FILE_DELETE:

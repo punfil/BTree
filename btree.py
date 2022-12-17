@@ -46,15 +46,8 @@ class BTree:
         if recurrency_depth == 0:  # This means add_record is called on root
             self._index_file.clear_io_operations_counters()
             self._record_file.clear_io_operations_counters()
-            rec, pg = self.read_record(index)
-            if rec is not None:  # Such record already exists
-                ireads, iwrites = self._index_file.get_io_operations()
-                rreads, rwrites = self._index_file.get_io_operations()
-                print("Such record already exists!")
-                self.print_io_operations(ireads + rreads, iwrites + rwrites)
-                return
-
         # If we are on root we need to split it.
+        ret = True
         if recurrency_depth == 0 and self._index_file.loaded_page.keys_count == 2 * self._d:
             current_page = self._index_file.loaded_page
             # Add new page for first son of the root
@@ -72,7 +65,7 @@ class BTree:
             self._index_file.save_page()
             # Emulation of recursive execution on the new son
             self._index_file.loaded_page = son_page
-            self.add_record(index, a_probability, b_probability, sum_probability, recurrency_depth + 1)
+            ret = self.add_record(index, a_probability, b_probability, sum_probability, recurrency_depth + 1)
         else:
             i = self._index_file.loaded_page.keys_count - 1
             if self._index_file.loaded_page.is_leaf is True:
@@ -85,6 +78,9 @@ class BTree:
                         self._index_file.loaded_page.metadata_entries[i]
                     i -= 1
                 # Add element at that index
+                already = next((record for record in self._index_file.loaded_page.metadata_entries if record and record.index == index), None)
+                if already is not None:
+                    return False
                 self._index_file.loaded_page.metadata_entries[i + 1] = IndexFilePageRecordEntry(index, page_number)
                 self._index_file.loaded_page.keys_count += 1
                 # There is no need to save that page, because either it's root or it will be saved
@@ -101,6 +97,9 @@ class BTree:
                 ison = self._index_file.loaded_page
 
                 add_done = False
+                rec = next((record for record in ison.metadata_entries if record and record.index == index), None)
+                if rec is not None:
+                    return False
                 if ison.keys_count == 2 * self._d:
                     # No place in the sons[i].
                     # Try left compensation
@@ -140,16 +139,18 @@ class BTree:
                 # or if it's root it's not required
                 self._index_file.loaded_page = old_parent
                 if add_done is True:
-                    return  # Record added, not further action required
+                    return True # Record added, not further action required
                 # Load the new sons[i] after split and try to do the same.
                 self._index_file.load_page(self._index_file.loaded_page.pointer_entries[i].file_position)
-                self.add_record(index, a_probability, b_probability, sum_probability, recurrency_depth + 1)
+                returning = self.add_record(index, a_probability, b_probability, sum_probability, recurrency_depth + 1)
                 self._index_file.save_page()
                 self._index_file.loaded_page = old_parent
+                ret = returning
         if recurrency_depth == 0:  # If we are back in root after recurrent calls we can print stats.
             ireads, iwrites = self._index_file.get_io_operations()
             rreads, rwrites = self._index_file.get_io_operations()
             self.print_io_operations(ireads + rreads, iwrites + rwrites)
+        return ret
 
     def split_child(self, i, old_root):
         # The new left son should be loaded before calling this function
@@ -412,6 +413,10 @@ class BTree:
                 ison = self._index_file.loaded_page
                 ison.page_number = parent.page_number
                 self._index_file.save_page()
+            ireads, iwrites = self._index_file.get_io_operations()
+            rreads, rwrites = self._index_file.get_io_operations()
+            self.print_io_operations(ireads + rreads, iwrites + rwrites)
+
         else:
             # Perform removal in node
             i = self.greater_or_equal(index, self._index_file.loaded_page)
