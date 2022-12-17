@@ -69,6 +69,7 @@ class RecordFileHandler:
                 sum_probability = binary_to_float(file.read(Constants.FLOAT_SIZE))
                 bytes_read += Constants.FLOAT_SIZE * 3
                 self._loaded_page.add_last_record(Record(index, a_probability, b_probability, sum_probability))
+        self._loaded_page.dirty_bit = False
 
     def save_page(self):
         if self._loaded_page.get_number_of_records() == 0:
@@ -79,6 +80,8 @@ class RecordFileHandler:
             return
         elif self._loaded_page.get_number_of_records() < self._max_number_of_records:
             self._not_full_pages.append(self._loaded_page.page_number)
+        if not self._loaded_page.dirty_bit:
+            return
         self._number_of_writes += 1
         with open(self._filename, "r+b") as file:
             file.seek(self._page_size * self._loaded_page.page_number)
@@ -136,16 +139,22 @@ class RecordFilePage:
     def __init__(self, page_number):
         self._records = []
         self._page_number = page_number
+        self._dirty_bit = False
 
     def add_last_record(self, record):
+        self._dirty_bit = True
         self._records.append(record)
 
     def remove_record(self, index):
+        self._dirty_bit = True
         self._records.remove(self.get_record(index))
 
     def remove_first_record(self):
         try:
-            return self._records.pop(0)
+            record = self._records.pop(0)
+            if record is not None:
+                self._dirty_bit = True
+            return record
         except IndexError:
             return None
 
@@ -158,7 +167,16 @@ class RecordFilePage:
     def create_new_page(self, new_page_number):
         self._page_number = new_page_number
         self._records.clear()
+        self._dirty_bit = False
 
     @property
     def page_number(self):
         return self._page_number
+
+    @property
+    def dirty_bit(self):
+        return self._dirty_bit
+
+    @dirty_bit.setter
+    def dirty_bit(self, value):
+        self._dirty_bit = value
