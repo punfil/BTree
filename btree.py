@@ -66,8 +66,6 @@ class BTree:
             self.split_child(0, current_page)
             # Switch places in real file
             current_page.page_number, son_page.page_number = son_page.page_number, current_page.page_number
-            # Save new parent page after split_child
-            self._index_file.save_page()
             # Save old parent page after split_child
             self._index_file.loaded_page = current_page
             self._index_file.save_page()
@@ -101,7 +99,7 @@ class BTree:
                 self._index_file.load_page(self._index_file.loaded_page.pointer_entries[i].file_position)
                 ison = self._index_file.loaded_page
 
-                compensation_done = False
+                add_done = False
                 if ison.keys_count == 2 * self._d:
                     # No place in the sons[i].
                     # Try left compensation
@@ -115,9 +113,9 @@ class BTree:
                                                                        sum_probability)
                             self.compensate(left_sibling, ison, old_parent, i - 1,
                                             IndexFilePageRecordEntry(index, page_number))
-                            compensation_done = True  # Record has been added.
+                            add_done = True  # Record has been added.
                     # Try right compensation if left has not been done.
-                    if compensation_done is False and ison.is_leaf is True and i < old_parent.keys_count - 1:
+                    if add_done is False and ison.is_leaf is True and i < old_parent.keys_count - 1:
                         self._index_file.load_page(old_parent.pointer_entries[i + 1].file_position)
                         right_sibling = self._index_file.loaded_page
                         if self._index_file.loaded_page.keys_count < 2 * self._d:
@@ -127,9 +125,9 @@ class BTree:
                             self.compensate(ison, right_sibling, old_parent, i,
                                             IndexFilePageRecordEntry(index, page_number))
                             self._index_file.loaded_page = right_sibling
-                            compensation_done = True  # Record has been added.
+                            add_done = True  # Record has been added.
                     # Compensation impossible. We need to split the sons[i] node.
-                    if compensation_done is False:
+                    if add_done is False:
                         self._index_file.loaded_page = old_parent
                         self.split_child(i, ison)
                         if index > old_parent.metadata_entries[i].index:
@@ -140,7 +138,7 @@ class BTree:
                 # It will be saved in a recurrent call
                 # or if it's root it's not required
                 self._index_file.loaded_page = old_parent
-                if compensation_done is True:
+                if add_done is True:
                     return  # Record added, not further action required
                 # Load the new sons[i] after split and try to do the same.
                 self._index_file.load_page(self._index_file.loaded_page.pointer_entries[i].file_position)
@@ -274,7 +272,7 @@ class BTree:
         ison = self._index_file.loaded_page
         self._index_file.load_page(node.pointer_entries[index + 1].file_position)
         i1son = self._index_file.loaded_page
-        if ison.keys_count >= self._d: # Edit ?
+        if ison.keys_count >= self._d:
             current = ison
             while not current.is_leaf:
                 self._index_file.load_page(current.pointer_entries[current.keys_count].file_position)
@@ -282,11 +280,11 @@ class BTree:
             predecessor = current.metadata_entries[current.keys_count - 1]
             node.metadata_entries[index] = predecessor
             self._index_file.loaded_page = ison
-            self.delete_record(predecessor.index, recurrency_depth + 1)  # Fix this
+            self.delete_record(predecessor.index, recurrency_depth + 1)
             self._index_file.save_page()
             self._index_file.loaded_page = node
             self._index_file.save_page()
-        elif i1son.keys_count >= self._d: #Edit ?
+        elif i1son.keys_count >= self._d:
             current = i1son
             while not current.is_leaf:
                 self._index_file.load_page(current.pointer_entries[0].file_position)
@@ -329,7 +327,7 @@ class BTree:
             node.pointer_entries[i - 1] = node.pointer_entries[i]
         child.keys_count += sibling.keys_count + 1
         node.keys_count -= 1
-        sibling.keys_count = 0  # Delete
+        sibling.keys_count = 0
         self._index_file.save_page()
         self._index_file.loaded_page = child
         self._index_file.save_page()
