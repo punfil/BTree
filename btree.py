@@ -46,7 +46,8 @@ class BTree:
         if recurrency_depth == 0:  # This means add_record is called on root
             self._index_file.clear_io_operations_counters()
             self._record_file.clear_io_operations_counters()
-            if self.read_record(index) is not None:  # Such record already exists
+            rec, pg = self.read_record(index)
+            if rec is not None:  # Such record already exists
                 ireads, iwrites = self._index_file.get_io_operations()
                 rreads, rwrites = self._index_file.get_io_operations()
                 print("Such record already exists!")
@@ -191,7 +192,7 @@ class BTree:
             self._record_file.clear_io_operations_counters()
 
         if not self._index_file.loaded_page.keys_count:
-            return None
+            return None, None
 
         i = self._index_file.loaded_page.keys_count - 1
         while i > 0 and index < self._index_file.loaded_page.metadata_entries[i].index:
@@ -200,6 +201,7 @@ class BTree:
             returning = self._record_file.get_record_by_index(self._index_file.loaded_page.metadata_entries[i].index,
                                                               self._index_file.loaded_page.metadata_entries[
                                                                   i].page_number)
+            pg = self._index_file.loaded_page.metadata_entries[i].page_number
         elif self._index_file.loaded_page.is_leaf is False:
             self._index_file.save_page()
             self._index_file.put_current_page_on_page_stack()
@@ -207,17 +209,16 @@ class BTree:
                 self._index_file.load_page(self._index_file.loaded_page.pointer_entries[i].file_position)
             else:
                 self._index_file.load_page(self._index_file.loaded_page.pointer_entries[i + 1].file_position)
-            record = self.read_record(index)
+            returning, pg = self.read_record(index)
             self._index_file.pop_last_page_stack()
-
-            returning = record
         else:
             returning = None
+            pg = None
         if check_io:
             ireads, iwrites = self._index_file.get_io_operations()
             rreads, rwrites = self._index_file.get_io_operations()
             self.print_io_operations(ireads + rreads, iwrites + rwrites)
-        return returning
+        return returning, pg
 
     def print_tree(self):
         if self._index_file.get_page_stack_size() == 0:
@@ -402,8 +403,10 @@ class BTree:
             # We are on root node
             self._index_file.clear_io_operations_counters()
             self._record_file.clear_io_operations_counters()
+            _, page = self.read_record(index)
             # Check if such record exists is not required as it's checked later anyway
             self.delete_record(index, recurrency_depth + 1)
+            self._record_file.remove_record(index, page)
             if self._index_file.loaded_page.keys_count == 0 and not self._index_file.loaded_page.is_leaf:
                 parent = self._index_file.loaded_page
                 self._index_file.load_page(self._index_file.loaded_page.pointer_entries[0].file_position)
