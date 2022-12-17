@@ -20,12 +20,14 @@ class RecordFileHandler:
     def __init__(self, page_size=4):  # Page size in number of records
         self._filename = Constants.RECORDS_FILENAME
         self._loaded_page = RecordFilePage(0)
-        self._number_of_pages = 1
+        self._last_page_number = 0
         # Index + P(A) + P(B) + P(AUB)
         self._page_size = page_size * (Constants.INTEGER_SIZE + 3 * Constants.FLOAT_SIZE)
         self._max_number_of_records = page_size
         self._number_of_reads = 0
         self._number_of_writes = 0
+        self._free_pages = []
+        self._not_full_pages = []
 
     def clear_io_operations_counters(self):
         self._number_of_reads = 0
@@ -35,16 +37,21 @@ class RecordFileHandler:
         return self._number_of_reads, self._number_of_writes
 
     def create_new_page(self):
-        self._loaded_page.create_new_page(self._number_of_pages)
-        self._number_of_pages += 1
+        if len(self._free_pages):
+            self._loaded_page.create_new_page(self._free_pages.pop)
+        else:
+            self._last_page_number += 1
+            self._loaded_page.create_new_page(self._last_page_number)
 
     def load_existing_page(self, page_number):
         try:
             assert (path.exists(self._filename))
-            assert (0 <= page_number < self._number_of_pages)
+            assert (0 <= page_number <= self._last_page_number)
         except AssertionError:
+            print("Wrong page number!")
             return
         self._loaded_page = RecordFilePage(page_number)
+        self._number_of_reads += 1
         with open(self._filename, "rb+") as file:
             file.seek(self._page_size * page_number)
             bytes_read = 0
@@ -64,6 +71,15 @@ class RecordFileHandler:
                 self._loaded_page.add_last_record(Record(index, a_probability, b_probability, sum_probability))
 
     def save_page(self):
+        if self._loaded_page.get_number_of_records() == 0:
+            if self._loaded_page.page_number == self._last_page_number:
+                self._last_page_number -= 1
+            else:
+                self._free_pages.append(self._loaded_page.page_number)
+            return
+        elif self._loaded_page.get_number_of_records() < self._max_number_of_records:
+            self._not_full_pages.append(self._loaded_page.page_number)
+        self._number_of_writes += 1
         with open(self._filename, "r+b") as file:
             file.seek(self._page_size * self._loaded_page.page_number)
             bytes_written = 0
@@ -84,7 +100,9 @@ class RecordFileHandler:
         if not self._loaded_page.page_number == page_number:
             self.save_page()
             self.load_existing_page(page_number)
-        return self._loaded_page.get_record(index)
+        record = self._loaded_page.get_record(index)
+        assert(record is not None)  # That is not possible by design
+        return record
 
     def add_record(self, index, a_probability, b_probability, sum_probability):
         # Check if we can write it to the current page
@@ -94,11 +112,10 @@ class RecordFileHandler:
             self._loaded_page.add_last_record(record)
             return self._loaded_page.page_number
         else:
-            # No, there's no space on this page. Check the last one.
-            if self._loaded_page.page_number != self._number_of_pages - 1:
-                # The currently loaded page is not the last one
+            # No, there's no space on this page.
+            if len(self._not_full_pages):
                 self.save_page()
-                self.load_existing_page(self._number_of_pages - 1)
+                self.load_existing_page(self._not_full_pages.pop())
                 return self.add_record(index, a_probability, b_probability, sum_probability)
             else:
                 # Currently loaded page is the last one. There's no space in existing pages. Add a new one!
