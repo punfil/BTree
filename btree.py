@@ -82,7 +82,7 @@ class BTree:
                     return False
                 self._index_file.loaded_page.metadata_entries[i + 1] = IndexFilePageRecordEntry(index, page_number)
                 self._index_file.loaded_page.keys_count += 1
-                self._index_file.save_page()
+                #self._index_file.save_page()
                 # There is no need to save that page, because either it's root or it will be saved
                 # as it's recurrent func call.
             else:
