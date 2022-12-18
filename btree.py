@@ -15,19 +15,18 @@ class BTree:
     @staticmethod
     def compensate(left_node, right_node, parent, i, new_record):
         # Only for leafs
-        left_node.keys_count = 0
-        right_node.keys_count = 0
         records_list = []
-        [records_list.append(x) for x in left_node.metadata_entries if x is not None]
+        [records_list.append(x) for idx, x in enumerate(left_node.metadata_entries) if idx < left_node.keys_count and x is not None]
         records_list.append(parent.metadata_entries[i])
-        [records_list.append(x) for x in right_node.metadata_entries if x is not None]
+        [records_list.append(x) for idx, x in enumerate(right_node.metadata_entries) if idx < right_node.keys_count and x is not None]
         records_list.append(new_record)
         records_list.sort()
         pointers_list = []
         [pointers_list.append(x) for x in left_node.pointer_entries if x is not None]
         [pointers_list.append(x) for x in right_node.pointer_entries if x is not None]
         partition = len(records_list) // 2
-
+        left_node.keys_count = 0
+        right_node.keys_count = 0
         for j in range(partition):
             left_node.metadata_entries[j] = records_list[j]
             left_node.keys_count += 1
@@ -78,11 +77,12 @@ class BTree:
                         self._index_file.loaded_page.metadata_entries[i]
                     i -= 1
                 # Add element at that index
-                already = next((record for record in self._index_file.loaded_page.metadata_entries if record and record.index == index), None)
+                already = next((record for idx, record in enumerate(self._index_file.loaded_page.metadata_entries) if idx < self._index_file.loaded_page.keys_count and record and record.index == index), None)
                 if already is not None:
                     return False
                 self._index_file.loaded_page.metadata_entries[i + 1] = IndexFilePageRecordEntry(index, page_number)
                 self._index_file.loaded_page.keys_count += 1
+                self._index_file.save_page()
                 # There is no need to save that page, because either it's root or it will be saved
                 # as it's recurrent func call.
             else:
@@ -97,7 +97,7 @@ class BTree:
                 ison = self._index_file.loaded_page
 
                 add_done = False
-                rec = next((record for record in ison.metadata_entries if record and record.index == index), None)
+                rec = next((record for idx, record in enumerate(ison.metadata_entries) if idx < ison.keys_count and record and record.index == index), None)
                 if rec is not None:
                     return False
                 if ison.keys_count == 2 * self._d:
@@ -228,7 +228,6 @@ class BTree:
         print("( ", end="")
         a = self._index_file.loaded_page.keys_count
         for i in range(0, self._index_file.loaded_page.keys_count):
-            # if is_leaf == false
             if not self._index_file.loaded_page.is_leaf:
                 self._index_file.put_current_page_on_page_stack()
                 self._index_file.load_page(self._index_file.loaded_page.pointer_entries[i].file_position)

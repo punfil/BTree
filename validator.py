@@ -16,9 +16,7 @@ class Validator:
                 numbers.remove(number)
                 # f.write(f"INSERT {number} {random.random()} {random.random()} {random.random()}")
                 f.write(f"INSERT {number}\n")
-                f.write(f"PRINT\n")
             while len(numbers_removal):
                 number = random.choice(numbers_removal)
                 numbers_removal.remove(number)
                 f.write(f"DELETE {number}\n")
-                f.write(f"PRINT\n")

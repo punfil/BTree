@@ -38,7 +38,7 @@ class RecordFileHandler:
 
     def create_new_page(self):
         if len(self._free_pages):
-            self._loaded_page.create_new_page(self._free_pages.pop)
+            self._loaded_page.create_new_page(self._free_pages.pop())
         else:
             self._last_page_number += 1
             self._loaded_page.create_new_page(self._last_page_number)
@@ -52,6 +52,12 @@ class RecordFileHandler:
             return
         if self._loaded_page.page_number == page_number:
             return
+        if self._loaded_page.get_number_of_records() == 0:
+            if self._loaded_page.page_number in self._not_full_pages:
+                self._not_full_pages.remove(self._loaded_page.page_number)
+            self._free_pages.append(self._loaded_page.page_number)
+        elif self._loaded_page.get_number_of_records() < self._max_number_of_records and self._loaded_page.page_number not in self._not_full_pages:
+            self._not_full_pages.append(self._loaded_page.page_number)
         self._loaded_page = RecordFilePage(page_number)
         self._number_of_reads += 1
         with open(self._filename, "rb+") as file:
@@ -62,6 +68,7 @@ class RecordFileHandler:
                 index = int.from_bytes(file.read(Constants.INTEGER_SIZE), Constants.LITERAL)
                 bytes_read += Constants.INTEGER_SIZE
                 if index == maxsize:
+                    self._loaded_page.dirty_bit = False
                     return
                 # It's the P(A)
                 a_probability = binary_to_float(file.read(Constants.FLOAT_SIZE))
@@ -74,29 +81,19 @@ class RecordFileHandler:
         self._loaded_page.dirty_bit = False
 
     def save_page(self):
-        if self._loaded_page.get_number_of_records() == 0:
-            if self._loaded_page.page_number == self._last_page_number:
-                self._last_page_number -= 1
-            else:
-                self._free_pages.append(self._loaded_page.page_number)
-            return
-        elif self._loaded_page.get_number_of_records() < self._max_number_of_records:
-            self._not_full_pages.append(self._loaded_page.page_number)
         if not self._loaded_page.dirty_bit:
             return
         self._number_of_writes += 1
         with open(self._filename, "r+b") as file:
             file.seek(self._page_size * self._loaded_page.page_number)
             bytes_written = 0
-            entry = self._loaded_page.remove_first_record()
-            while bytes_written < self._page_size and entry is not None:
+            for entry in self._loaded_page.records:
                 file.write(entry.index.to_bytes(Constants.INTEGER_SIZE, Constants.LITERAL))
                 bytes_written += Constants.INTEGER_SIZE
                 file.write(float_to_binary(entry.a_probability))
                 file.write(float_to_binary(entry.b_probability))
                 file.write(float_to_binary(entry.sum_probability))
                 bytes_written += Constants.FLOAT_SIZE * 3
-                entry = self._loaded_page.remove_first_record()
             while bytes_written < self._page_size:
                 file.write(sys.maxsize.to_bytes(Constants.FLOAT_SIZE, Constants.LITERAL))
                 bytes_written += Constants.FLOAT_SIZE
@@ -183,3 +180,7 @@ class RecordFilePage:
     @dirty_bit.setter
     def dirty_bit(self, value):
         self._dirty_bit = value
+
+    @property
+    def records(self):
+        return self._records
