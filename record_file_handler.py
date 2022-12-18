@@ -50,6 +50,8 @@ class RecordFileHandler:
         except AssertionError:
             print("Wrong page number!")
             return
+        if self._loaded_page.page_number == page_number:
+            return
         self._loaded_page = RecordFilePage(page_number)
         self._number_of_reads += 1
         with open(self._filename, "rb+") as file:

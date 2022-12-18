@@ -30,6 +30,8 @@ class IndexFileHandler:
             assert (0 <= page_number < self._number_of_pages)
         except AssertionError:
             return
+        if self._loaded_page.page_number == page_number:
+            return
         page = next((page for page in self._last_loaded_page_stack if page.page_number == page_number), None)
         if page:
             self._last_loaded_page_stack.append(self._loaded_page)
