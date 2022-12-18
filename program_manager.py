@@ -116,7 +116,7 @@ class ProgramManager:
         except AssertionError:
             print("Invalid index of record!\n")
             return
-        record = self._btree.read_record(index, True)
+        record, pg = self._btree.read_record(index, True)
         if record is not None:
             print(record.serialize())
         else:
