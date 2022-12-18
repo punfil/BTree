@@ -146,9 +146,9 @@ class ProgramManager:
         assert (len(numbers) == 1)
         try:
             index = int(numbers[0])
-            a_probability = float(numbers[1])
-            b_probability = float(numbers[2])
-            sum_probability = float(numbers[3])
+            a_probability = random.random() #float(numbers[1])
+            b_probability = random.random() #float(numbers[2])
+            sum_probability = random.random() #float(numbers[3])
             assert(old_index >= 0)
             assert(index >= 0)
             assert (0 <= a_probability <= 1.0)
@@ -193,4 +193,5 @@ class ProgramManager:
         cnt = int(input("How many records to test?"))
         self._btree = BTree(self._d)
         self._validator.add_x_records(cnt)
+        self.load_command(Constants.VALIDATOR_FILENAME)
         self.load_command(Constants.VALIDATOR_FILENAME)

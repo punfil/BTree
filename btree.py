@@ -447,7 +447,8 @@ class BTree:
                 self._index_file.loaded_page = parent
 
     def update_record(self, old_index, index, a_probability, b_probability, sum_probability):
-        if self.read_record(index) is None:
+        record, pg = self.read_record(index)
+        if record is None:
             self.delete_record(old_index, 0)
             self.add_record(index, a_probability, b_probability, sum_probability, 0)
         else:
