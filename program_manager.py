@@ -194,4 +194,3 @@ class ProgramManager:
         self._btree = BTree(self._d)
         self._validator.add_x_records(cnt)
         self.load_command(Constants.VALIDATOR_FILENAME)
-        self.load_command(Constants.VALIDATOR_FILENAME)
